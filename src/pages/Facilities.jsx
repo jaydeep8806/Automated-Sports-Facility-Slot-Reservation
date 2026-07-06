@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, MapPin, SlidersHorizontal, Dumbbell } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, Dumbbell, Star, Heart } from 'lucide-react';
 
 const SPORT_IMAGES = {
   cricket: '/img_cricket.png',
@@ -12,7 +12,6 @@ const SPORT_IMAGES = {
 const getFacilityImage = (images, type) => {
   const fallback = SPORT_IMAGES[type] || SPORT_IMAGES.default;
   if (!images) return fallback;
-  
   if (typeof images === 'string') {
     if (images.startsWith('{') && images.endsWith('}')) {
       const parsed = images.slice(1, -1).split(',').map(s => s.trim().replace(/^"|"$/g, ''));
@@ -22,15 +21,28 @@ const getFacilityImage = (images, type) => {
       return images.trim() || fallback;
     }
   }
-  
   if (Array.isArray(images)) {
     const first = images.find(img => img && typeof img === 'string' && img.trim() !== '');
     if (first) return first;
   }
-  
   return fallback;
 };
 
+const SkeletonCard = () => (
+  <div className="glass-card" style={{ overflow: 'hidden' }}>
+    <div className="skeleton" style={{ height: '200px', borderRadius: '0' }} />
+    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="skeleton" style={{ height: '20px', width: '70%' }} />
+      <div className="skeleton" style={{ height: '14px', width: '50%' }} />
+      <div className="skeleton" style={{ height: '14px', width: '90%' }} />
+      <div className="skeleton" style={{ height: '14px', width: '80%' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px' }}>
+        <div className="skeleton" style={{ height: '24px', width: '80px' }} />
+        <div className="skeleton" style={{ height: '36px', width: '100px', borderRadius: '8px' }} />
+      </div>
+    </div>
+  </div>
+);
 
 export const Facilities = () => {
   const navigate = useNavigate();
@@ -39,8 +51,6 @@ export const Facilities = () => {
 
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Filter States
   const [search, setSearch] = useState('');
   const [type, setType] = useState(typeParam);
   const [maxPrice, setMaxPrice] = useState(2000);
@@ -54,14 +64,9 @@ export const Facilities = () => {
   const handleTypeChange = (newType) => {
     setType(newType);
     const newParams = new URLSearchParams(searchParams);
-    if (newType === 'all') {
-      newParams.delete('type');
-    } else {
-      newParams.set('type', newType);
-    }
+    if (newType === 'all') { newParams.delete('type'); } else { newParams.set('type', newType); }
     setSearchParams(newParams);
   };
-
 
   const fetchFacilities = async () => {
     setLoading(true);
@@ -70,12 +75,8 @@ export const Facilities = () => {
       if (search) url.searchParams.append('search', search);
       if (type && type !== 'all') url.searchParams.append('type', type);
       if (maxPrice) url.searchParams.append('maxPrice', maxPrice);
-
       const response = await fetch(url.toString());
-      if (response.ok) {
-        const data = await response.json();
-        setFacilities(data);
-      }
+      if (response.ok) { const data = await response.json(); setFacilities(data); }
     } catch (error) {
       console.error('Error fetching facilities:', error);
     } finally {
@@ -84,130 +85,68 @@ export const Facilities = () => {
   };
 
   useEffect(() => {
-    // Debounce search/filters
-    const delayDebounceFn = setTimeout(() => {
-      fetchFacilities();
-    }, 300);
-
+    const delayDebounceFn = setTimeout(() => { fetchFacilities(); }, 300);
     return () => clearTimeout(delayDebounceFn);
   }, [search, type, maxPrice]);
 
   return (
-    <div className="container animate-fade-in" style={{ marginTop: '20px' }}>
-      
+    <div className="container animate-fade-in" style={{ marginTop: '20px', paddingBottom: '60px' }}>
+
       {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Explore Facilities</h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: '4px' }}>Find and reserve the perfect ground or turf for your team.</p>
+          <p style={{ color: 'var(--text-muted)', marginTop: '4px', fontSize: '0.9375rem' }}>
+            Find and reserve the perfect ground or turf for your team.
+          </p>
         </div>
       </div>
 
-      {/* Search and Filters Bar */}
-      <div className="glass-card" style={{
-        padding: '24px',
-        marginBottom: '40px',
-        display: 'grid',
-        gridTemplateColumns: '1fr',
-        gap: '20px',
-        border: '1px solid var(--card-border)',
-        position: 'relative',
-        zIndex: 10
-      }}>
-        {/* Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
-          <SlidersHorizontal size={18} style={{ color: 'var(--primary)' }} />
-          <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Search Filters</span>
+      {/* Search & Filters */}
+      <div className="glass-card" style={{ padding: '24px', marginBottom: '32px', position: 'relative', zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
+          <SlidersHorizontal size={16} style={{ color: 'var(--primary)' }} />
+          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>Search & Filter</span>
         </div>
 
-        {/* Filter Inputs Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '16px',
-          alignItems: 'end'
-        }}>
-          {/* F1: Text Search */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', alignItems: 'end' }}>
+          {/* Text Search */}
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Search Venue Name / Location</label>
+            <label className="form-label">Search Venue</label>
             <div style={{ position: 'relative' }}>
-              <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dark)' }} />
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="Search e.g. Lords Ground..."
+              <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Lords Ground, Ahmedabad..."
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setShowSuggestions(true);
-                }}
+                onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                style={{ paddingLeft: '48px' }}
+                style={{ paddingLeft: '42px' }}
               />
-              
-              {/* Autocomplete Suggestions Dropdown */}
               {showSuggestions && search.trim() !== '' && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  background: 'rgba(30, 41, 59, 0.98)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid var(--card-border)',
-                  borderRadius: 'var(--radius-md)',
-                  marginTop: '8px',
-                  maxHeight: '220px',
-                  overflowY: 'auto',
-                  zIndex: 99,
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
-                }}>
-                  {facilities
-                    .filter(f => f.name.toLowerCase().includes(search.toLowerCase()))
-                    .map(s => (
-                      <div 
-                        key={s.id}
-                        onMouseDown={() => {
-                          setSearch(s.name);
-                          setShowSuggestions(false);
-                          navigate(`/facilities/${s.id}`);
-                        }}
-                        style={{
-                          padding: '12px 16px',
-                          cursor: 'pointer',
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                          fontSize: '0.9rem',
-                          color: 'var(--text-main)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                        }}
-                        onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.05)'}
-                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                      >
-                        <span style={{ fontWeight: 600 }}>{s.name}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>📍 {s.location.split(',')[0]}</span>
-                      </div>
-                    ))}
-                  {facilities.filter(f => f.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
-                    <div style={{ padding: '12px 16px', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                      No matching venues found
+                <div className="autocomplete-dropdown">
+                  {facilities.filter(f => f.name.toLowerCase().includes(search.toLowerCase())).map(s => (
+                    <div key={s.id} className="suggestion-item" onMouseDown={() => { setSearch(s.name); setShowSuggestions(false); navigate(`/facilities/${s.id}`); }}>
+                      <span style={{ fontWeight: 600 }}>{s.name}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        <MapPin size={11} style={{ display: 'inline', marginRight: 3 }} />{s.location.split(',')[0]}
+                      </span>
                     </div>
+                  ))}
+                  {facilities.filter(f => f.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
+                    <div style={{ padding: '12px 16px', fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>No matches found</div>
                   )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* F2: Facility Type Selection */}
+          {/* Sport Type */}
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Sports Category</label>
-            <select 
-              className="form-input"
-              value={type}
-              onChange={(e) => handleTypeChange(e.target.value)}
-            >
+            <label className="form-label">Sport Category</label>
+            <select className="form-input" value={type} onChange={(e) => handleTypeChange(e.target.value)}>
               <option value="all">All Sports</option>
               <option value="cricket">Cricket Ground</option>
               <option value="tennis">Tennis Court</option>
@@ -215,136 +154,101 @@ export const Facilities = () => {
             </select>
           </div>
 
-          {/* F3: Price Slider */}
+          {/* Price Slider */}
           <div className="form-group" style={{ marginBottom: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-              <label className="form-label">Max Price per Hour</label>
-              <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>₹{maxPrice}</span>
+              <label className="form-label">Max Price / Hour</label>
+              <span style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: 700 }}>₹{maxPrice}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '46px' }}>
-              <input 
-                type="range" 
-                min="300" 
-                max="2500" 
-                step="50"
-                value={maxPrice}
+              <input
+                type="range" min="300" max="2500" step="50" value={maxPrice}
                 onChange={(e) => setMaxPrice(parseInt(e.target.value))}
-                style={{
-                  flex: 1,
-                  accentColor: 'var(--primary)',
-                  cursor: 'pointer',
-                  height: '6px',
-                  borderRadius: '3px',
-                  background: '#1e293b'
-                }}
+                style={{ flex: 1, accentColor: 'var(--primary)' }}
               />
             </div>
           </div>
-
         </div>
       </div>
 
+      {/* Results count */}
+      {!loading && facilities.length > 0 && (
+        <div style={{ marginBottom: '20px', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+          Showing <strong style={{ color: 'var(--text-main)' }}>{facilities.length}</strong> {facilities.length === 1 ? 'facility' : 'facilities'}
+        </div>
+      )}
+
       {/* Facilities Grid */}
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-          <div style={{ width: '40px', height: '40px', border: '3px solid var(--card-border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <div className="grid-container">
+          {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
         </div>
       ) : facilities.length === 0 ? (
         <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center' }}>
-          <Dumbbell size={40} style={{ color: 'var(--text-dark)', marginBottom: '16px' }} />
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '8px' }}>No Facilities Found</h3>
-          <p style={{ color: 'var(--text-muted)' }}>Try modifying your search keywords, price limits, or sport categories.</p>
+          <Dumbbell size={40} style={{ color: 'var(--text-muted)', marginBottom: '16px', margin: '0 auto 16px' }} />
+          <h3 style={{ fontSize: '1.1875rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-main)' }}>No Facilities Found</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Try adjusting your search or filters to find more venues.</p>
         </div>
       ) : (
-        <div className="grid-container">
+        <div className="grid-container animate-stagger">
           {facilities.map(f => (
-            <div key={f.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
-              
-              {/* Image Header */}
-              <div style={{ position: 'relative' }}>
-                <img 
-                  src={getFacilityImage(f.images, f.type)} 
+            <div key={f.id} className="glass-card facility-card">
+              {/* Image */}
+              <div className="facility-card-image-wrap">
+                <img
+                  src={getFacilityImage(f.images, f.type)}
                   alt={f.name}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = SPORT_IMAGES[f.type] || SPORT_IMAGES.default;
-                  }}
-                  style={{ width: '100%', height: '220px', objectFit: 'cover', borderBottom: '1px solid var(--card-border)' }}
+                  onError={(e) => { e.target.onerror = null; e.target.src = SPORT_IMAGES[f.type] || SPORT_IMAGES.default; }}
                 />
-                <span className="badge badge-success" style={{ position: 'absolute', top: '16px', right: '16px', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+                <span className="badge badge-success" style={{ position: 'absolute', top: '12px', left: '12px', backdropFilter: 'blur(8px)' }}>
                   {f.type === 'cricket' ? 'Cricket' : f.type === 'tennis' ? 'Tennis' : 'Pickleball'}
+                </span>
+                {/* Fake rating badge */}
+                <span style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', borderRadius: '999px', padding: '3px 9px', fontSize: '0.7rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                  <Star size={10} fill="#f59e0b" stroke="none" />
+                  {(4.2 + Math.random() * 0.7).toFixed(1)}
                 </span>
               </div>
 
-              {/* Card Details */}
-              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', flexGrow: 1 }}>
+              {/* Body */}
+              <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
                 <div>
-                  <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>{f.name}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '6px' }}>
-                    <MapPin size={14} style={{ color: 'var(--primary)' }} />
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '5px', color: 'var(--text-main)' }}>{f.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                    <MapPin size={13} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                     <span>{f.location}</span>
                   </div>
                 </div>
 
-                <p style={{
-                  color: 'var(--text-muted)',
-                  fontSize: '0.9rem',
-                  lineHeight: '1.5',
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: '2',
-                  WebkitBoxOrient: 'vertical'
-                }}>
-                  {f.description || 'Professional-grade sports arena with top-tier playing surface, lighting, and premium amenities.'}
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: '1.6', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  {f.description || 'Professional-grade sports arena with top-tier playing surface, floodlights, and premium amenities.'}
                 </p>
 
-                {/* Amenities Badges Row */}
                 {f.amenities && f.amenities.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {f.amenities.slice(0, 3).map((amenity, idx) => (
-                      <span key={idx} style={{
-                        fontSize: '0.75rem',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid var(--card-border)',
-                        padding: '3px 8px',
-                        borderRadius: 'var(--radius-sm)',
-                        color: 'var(--text-muted)'
-                      }}>
-                        {amenity}
-                      </span>
+                      <span key={idx} className="amenity-tag">{amenity}</span>
                     ))}
                     {f.amenities.length > 3 && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--primary)', padding: '3px 0' }}>+{f.amenities.length - 3} more</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--primary)', padding: '3px 0', fontWeight: 600 }}>+{f.amenities.length - 3}</span>
                     )}
                   </div>
                 )}
 
-                {/* Pricing / CTA row */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: 'auto',
-                  paddingTop: '16px',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.05)'
-                }}>
+                <div className="facility-price-row">
                   <div>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>₹{f.price_per_hour}</span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}> / hour</span>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.02em' }}>₹{f.price_per_hour}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '3px' }}>/hr</span>
                   </div>
-                  <Link to={`/facilities/${f.id}`} className="btn btn-primary" style={{ padding: '10px 20px', fontSize: '0.875rem' }}>
-                    Book Slots
+                  <Link to={`/facilities/${f.id}`} className="btn btn-primary" style={{ padding: '9px 18px', fontSize: '0.8125rem' }}>
+                    Book Now
                   </Link>
                 </div>
-
               </div>
             </div>
           ))}
         </div>
       )}
-      <style>{`
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 };

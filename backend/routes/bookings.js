@@ -1,6 +1,7 @@
 import express from 'express';
 import { query } from '../db.js';
 import { auth, admin } from '../middleware/auth.js';
+import { sendBookingConfirmationEmail } from '../utils/email.js';
 
 const router = express.Router();
 
@@ -82,6 +83,20 @@ router.post('/', auth, async (req, res) => {
       );
       insertedBookings.push(insertRes.rows[0]);
     }
+
+    // Send email confirmation asynchronously
+    sendBookingConfirmationEmail(req.user.email, {
+      userName: req.user.name,
+      bookingIds: insertedBookings.map(b => b.id),
+      sportName: facRes.rows[0].type,
+      venueName: facRes.rows[0].name,
+      venueLocation: facRes.rows[0].location,
+      date: date,
+      slots: slotsToBook,
+      totalPrice: parseFloat(totalPrice),
+    }).catch(err => {
+      console.error('Failed to send booking confirmation email:', err);
+    });
 
     res.status(201).json({
       message: 'Booking completed successfully!',

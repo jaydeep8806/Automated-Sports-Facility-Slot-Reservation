@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query } from '../db.js';
 import { auth } from '../middleware/auth.js';
+import { sendVerificationEmail } from '../utils/email.js';
 
 const router = express.Router();
 
@@ -17,6 +18,12 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ message: 'Please enter all required fields.' });
   }
 
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: 'Invalid email address format.' });
+  }
+
   try {
     // Check if user already exists
     const userRes = await query('SELECT * FROM users WHERE email = $1', [email]);
@@ -28,20 +35,30 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user (default role 'user')
+    // Generate random 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Create user (default role 'user', default status 'Unverified')
     const newUserRes = await query(
-      'INSERT INTO users (name, email, password, phone, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, phone',
-      [name, email, hashedPassword, phone, 'user']
+      'INSERT INTO users (name, email, password, phone, role, status, verification_otp, otp_expiry) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, name, email, role, phone, status',
+      [name, email, hashedPassword, phone, 'user', 'Unverified', otp, otpExpiry]
     );
 
     const user = newUserRes.rows[0];
 
-    // Generate JWT
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    // Send verification email synchronously
+    try {
+      await sendVerificationEmail(email, name, otp);
+    } catch (err) {
+      console.error('Failed to send verification email during registration. Rolling back user:', err);
+      await query('DELETE FROM users WHERE id = $1', [user.id]);
+      return res.status(500).json({ message: `Failed to send verification email: ${err.message}` });
+    }
 
     res.status(201).json({
-      token,
-      user,
+      message: 'Registration successful! A verification OTP has been sent to your email.',
+      email: user.email,
     });
   } catch (err) {
     console.error('Registration error:', err);
@@ -74,6 +91,15 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials.' });
     }
 
+    // Check email verification status
+    if (user.status !== 'Verified') {
+      return res.status(401).json({
+        message: 'Your email address is not verified. Please verify your email before logging in.',
+        unverified: true,
+        email: user.email,
+      });
+    }
+
     // Generate JWT
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
@@ -85,10 +111,114 @@ router.post('/login', async (req, res) => {
         email: user.email,
         role: user.role,
         phone: user.phone,
+        status: user.status,
       },
     });
   } catch (err) {
     console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+});
+
+// @route   POST /api/auth/verify-email
+// @desc    Verify user email using OTP
+// @access  Public
+router.post('/verify-email', async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res.status(400).json({ message: 'Email and OTP code are required.' });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: 'Invalid email address format.' });
+  }
+
+  try {
+    const userRes = await query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const user = userRes.rows[0];
+
+    if (user.status === 'Verified') {
+      return res.status(400).json({ message: 'Email is already verified. Please login.' });
+    }
+
+    // Expiration check (5 minutes)
+    if (user.otp_expiry && new Date(user.otp_expiry) < new Date()) {
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (user.verification_otp !== otp.trim()) {
+      return res.status(400).json({ message: 'Invalid OTP code. Please check and try again.' });
+    }
+
+    // Update user status
+    await query(
+      "UPDATE users SET status = 'Verified', verification_otp = NULL, otp_expiry = NULL WHERE id = $1",
+      [user.id]
+    );
+
+    res.json({ message: 'Email verified successfully! You can now log in.' });
+  } catch (err) {
+    console.error('Verify email error:', err);
+    res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+});
+
+// @route   POST /api/auth/resend-otp
+// @desc    Resend email verification OTP
+// @access  Public
+router.post('/resend-otp', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required.' });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: 'Invalid email address format.' });
+  }
+
+  try {
+    const userRes = await query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const user = userRes.rows[0];
+
+    if (user.status === 'Verified') {
+      return res.status(400).json({ message: 'Email is already verified.' });
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Update OTP and Expiry in database
+    await query(
+      "UPDATE users SET verification_otp = $1, otp_expiry = $2 WHERE id = $3",
+      [otp, otpExpiry, user.id]
+    );
+
+    // Send verification email synchronously
+    try {
+      await sendVerificationEmail(email, user.name, otp);
+    } catch (err) {
+      console.error('Failed to resend verification email:', err);
+      return res.status(500).json({ message: `Failed to send verification email: ${err.message}` });
+    }
+
+    res.json({ message: 'A new verification OTP has been sent to your email.' });
+  } catch (err) {
+    console.error('Resend OTP error:', err);
     res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 });
@@ -130,7 +260,7 @@ router.put('/profile', auth, async (req, res) => {
     }
 
     queryParams.push(userId);
-    queryStr += ` WHERE id = $${queryParams.length} RETURNING id, name, email, role, phone`;
+    queryStr += ` WHERE id = $${queryParams.length} RETURNING id, name, email, role, phone, status`;
 
     const updateRes = await query(queryStr, queryParams);
 

@@ -9,6 +9,7 @@ import { AdminRoute } from './components/AdminRoute';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { VerifyEmail } from './pages/VerifyEmail';
 import { Facilities } from './pages/Facilities';
 import { FacilityDetail } from './pages/FacilityDetail';
 import { Payment } from './pages/Payment';
@@ -27,6 +28,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/facilities" element={<Facilities />} />
 
               {/* Private Routes */}

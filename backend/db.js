@@ -52,8 +52,19 @@ export const initDb = async () => {
         password VARCHAR(255) NOT NULL,
         role VARCHAR(50) DEFAULT 'user',
         phone VARCHAR(50) NOT NULL,
+        status VARCHAR(50) DEFAULT 'Unverified',
+        verification_otp VARCHAR(6),
+        otp_expiry TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Ensure table has the status, verification_otp and otp_expiry columns if it was already created
+    await query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Unverified',
+      ADD COLUMN IF NOT EXISTS verification_otp VARCHAR(6),
+      ADD COLUMN IF NOT EXISTS otp_expiry TIMESTAMP;
     `);
 
     // 2. Create Facilities Table
@@ -98,14 +109,14 @@ export const initDb = async () => {
       const userHash = await bcrypt.hash('user123', 10);
 
       await query(
-        `INSERT INTO users (name, email, password, role, phone) VALUES 
-         ($1, $2, $3, $4, $5)`,
+        `INSERT INTO users (name, email, password, role, phone, status) VALUES 
+         ($1, $2, $3, $4, $5, 'Verified')`,
         ['System Administrator', 'admin@sports.com', adminHash, 'admin', '1234567890']
       );
 
       await query(
-        `INSERT INTO users (name, email, password, role, phone) VALUES 
-         ($1, $2, $3, $4, $5)`,
+        `INSERT INTO users (name, email, password, role, phone, status) VALUES 
+         ($1, $2, $3, $4, $5, 'Verified')`,
         ['John Doe', 'user@sports.com', userHash, 'user', '9876543210']
       );
 
@@ -113,6 +124,12 @@ export const initDb = async () => {
       console.log(' - Admin: admin@sports.com / admin123');
       console.log(' - User: user@sports.com / user123');
     }
+
+    // Always ensure default seeded users are verified
+    await query(`
+      UPDATE users SET status = 'Verified' 
+      WHERE email IN ('admin@sports.com', 'user@sports.com') AND (status != 'Verified' OR status IS NULL)
+    `);
 
     // 5. Seed default Facilities (9 grounds across Gujarat cities: Cricket, Tennis, and Pickleball)
     console.log('Checking and seeding default facilities...');

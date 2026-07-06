@@ -122,7 +122,7 @@ export const FacilityDetail = () => {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
-        <div style={{ width: '40px', height: '40px', border: '3px solid var(--card-border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <div className="spinner" />
       </div>
     );
   }
@@ -208,18 +208,8 @@ export const FacilityDetail = () => {
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px' }}>Key Amenities Available</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
               {facility.amenities && facility.amenities.map((amenity, idx) => (
-                <div key={idx} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid var(--card-border)',
-                  padding: '8px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.9rem',
-                  color: 'var(--text-main)'
-                }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)' }}></div>
+                <div key={idx} className="amenity-tag" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.875rem' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }}></div>
                   <span>{amenity}</span>
                 </div>
               ))}
@@ -250,8 +240,7 @@ export const FacilityDetail = () => {
 
             {slotsLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
-                <div style={{ width: '32px', height: '32px', border: '2px solid var(--card-border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-              </div>
+                <div className="spinner" /></div>
             ) : slots.length === 0 ? (
               <p style={{ color: 'var(--text-dark)' }}>No operational hours configured for this venue.</p>
             ) : (
@@ -264,22 +253,22 @@ export const FacilityDetail = () => {
                   const isSelected = selectedSlots.some(s => s.startTime === slot.startTime);
 
                   let cursor = 'pointer';
-                  let border = '1px solid var(--card-border)';
-                  let background = 'rgba(255, 255, 255, 0.02)';
+                  let border = '1px solid var(--border)';
+                  let background = 'var(--bg-surface)';
                   let opacity = 1;
                   let textColor = 'var(--text-main)';
 
                   if (slot.booked) {
                     cursor = 'not-allowed';
-                    background = 'rgba(239, 68, 68, 0.05)';
-                    border = '1px solid rgba(239, 68, 68, 0.15)';
-                    textColor = 'var(--text-dark)';
+                    background = 'var(--danger-glow)';
+                    border = '1px solid rgba(239, 68, 68, 0.2)';
+                    textColor = 'var(--text-muted)';
                   } else if (slot.isPast) {
                     cursor = 'not-allowed';
-                    background = 'rgba(255, 255, 255, 0.02)';
-                    border = '1px solid var(--card-border)';
-                    textColor = 'rgba(255, 255, 255, 0.1)';
-                    opacity = 0.4;
+                    background = 'var(--bg-surface)';
+                    border = '1px solid var(--border)';
+                    textColor = 'var(--text-muted)';
+                    opacity = 0.45;
                   } else if (isSelected) {
                     background = 'var(--primary-glow)';
                     border = '2px solid var(--primary)';
@@ -289,6 +278,7 @@ export const FacilityDetail = () => {
                   return (
                     <button
                       key={index}
+                      className={`time-slot-btn ${isSelected ? 'selected' : ''}`}
                       disabled={slot.booked || slot.isPast}
                       onClick={() => {
                         if (selectedSlots.some(s => s.startTime === slot.startTime)) {
@@ -310,19 +300,6 @@ export const FacilityDetail = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '6px',
-                        transition: 'var(--transition-smooth)',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!slot.booked && !slot.isPast && !isSelected) {
-                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!slot.booked && !slot.isPast && !isSelected) {
-                          e.currentTarget.style.borderColor = 'var(--card-border)';
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-                        }
                       }}
                     >
                       <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>{slot.startTime}</span>
@@ -365,35 +342,35 @@ export const FacilityDetail = () => {
             {/* Selected Info Summary */}
             {selectedSlots.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Selected Date:</span>
-                  <span style={{ fontWeight: 600 }}>{selectedDate}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Selected Date:</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{selectedDate}</span>
                 </div>
 
                 {/* List Slots */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Selected Slots ({selectedSlots.length}):</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Selected Slots ({selectedSlots.length}):</span>
                   {selectedSlots.map((s, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', paddingLeft: '8px' }}>
-                      <span>• {s.startTime} - {s.endTime}</span>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', paddingLeft: '8px' }}>
+                      <span>• {s.startTime} – {s.endTime}</span>
                       <span style={{ fontWeight: 600 }}>₹{parseFloat(s.price).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Total Duration:</span>
-                  <span style={{ fontWeight: 600 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Total Duration:</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
                     {selectedSlots.length * (facility.slot_duration / 60)} {selectedSlots.length * (facility.slot_duration / 60) === 1 ? 'hour' : 'hours'}
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Stadium Hourly Rate:</span>
-                  <span style={{ fontWeight: 600 }}>₹{parseFloat(facility.price_per_hour).toFixed(2)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Hourly Rate:</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>₹{parseFloat(facility.price_per_hour).toFixed(2)}</span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--card-border)', paddingBottom: '12px', marginTop: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--border)', paddingBottom: '12px', marginTop: '8px' }}>
                   <span style={{ fontSize: '1.05rem', fontWeight: 700 }}>Total Amount:</span>
                   <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>
                     ₹{selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}

@@ -15,7 +15,7 @@ export const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check if user still exists in database
-    const userRes = await query('SELECT id, name, email, role, phone FROM users WHERE id = $1', [decoded.id]);
+    const userRes = await query('SELECT id, name, email, role, phone, status FROM users WHERE id = $1', [decoded.id]);
     
     if (userRes.rows.length === 0) {
       return res.status(401).json({ message: 'User does not exist, authorization denied.' });

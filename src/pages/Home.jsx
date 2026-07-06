@@ -1,299 +1,272 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, ArrowRight, ShieldCheck, Zap, CalendarDays, Undo2 } from 'lucide-react';
+import {
+  ArrowRight, ShieldCheck, Zap, CalendarDays, Undo2,
+  MapPin, Star, Users, Trophy, Clock, ChevronDown,
+  Twitter, Instagram, Linkedin, Github, Mail, Phone, CheckCircle2
+} from 'lucide-react';
 
-const getFacilityImage = (images) => {
-  const defaultImage = 'https://images.unsplash.com/photo-1544698310-74ea9d1c8258?q=80&w=800&auto=format&fit=crop';
-  if (!images) return defaultImage;
-  
-  if (typeof images === 'string') {
-    if (images.startsWith('{') && images.endsWith('}')) {
-      const parsed = images.slice(1, -1).split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-      const first = parsed.find(Boolean);
-      if (first) return first;
-    } else {
-      return images.trim() || defaultImage;
-    }
-  }
-  
-  if (Array.isArray(images)) {
-    const first = images.find(img => img && typeof img === 'string' && img.trim() !== '');
-    if (first) return first;
-  }
-  
-  return defaultImage;
+const FAQS = [
+  { q: 'How do I book a slot?', a: 'Browse facilities, select your ground, pick an available date and time slot, then confirm your booking. You will receive an email confirmation instantly.' },
+  { q: 'Can I cancel my booking?', a: 'Yes — you can cancel any upcoming booking from your Profile page. Cancellations are free before the slot start time.' },
+  { q: 'What payment methods are supported?', a: 'We currently support all major UPI apps, net banking, debit/credit cards, and wallet payments for hassle-free transactions.' },
+  { q: 'How far in advance can I book?', a: 'You can book facilities up to 30 days in advance. Slots open at midnight for new dates.' },
+  { q: 'Are there any membership benefits?', a: 'Registered users enjoy priority booking, exclusive discounts on repeat bookings, and early access to new facilities.' },
+];
+
+const TESTIMONIALS = [
+  { name: 'Arjun Patel', role: 'Cricket Player, Ahmedabad', text: 'SportSlot made booking our weekly cricket practice so seamless. No more calling grounds early morning — just open the app and book in 30 seconds!', initials: 'AP', color: '#22c55e' },
+  { name: 'Priya Sharma', role: 'Tennis Coach, Surat', text: 'My students and I use SportSlot every week to reserve courts. The real-time slot availability is incredibly accurate. Zero double-booking issues ever.', initials: 'PS', color: '#3b82f6' },
+  { name: 'Rohan Mehta', role: 'Pickleball Enthusiast, Vadodara', text: 'Finally a platform that takes sports booking seriously! Clean UI, instant confirmation emails, and reliable slot management. Highly recommended.', initials: 'RM', color: '#8b5cf6' },
+];
+
+const STATS = [
+  { value: '50+', label: 'Grounds', icon: <Trophy size={20} style={{ color: '#22c55e' }} /> },
+  { value: '5K+', label: 'Players', icon: <Users size={20} style={{ color: '#3b82f6' }} /> },
+  { value: '20K+', label: 'Bookings', icon: <CheckCircle2 size={20} style={{ color: '#8b5cf6' }} /> },
+  { value: '4.9★', label: 'Rating', icon: <Star size={20} style={{ color: '#f59e0b' }} /> },
+];
+
+const FaqItem = ({ q, a }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`faq-item${open ? ' open' : ''}`}>
+      <button className="faq-trigger" onClick={() => setOpen(!open)}>
+        <span>{q}</span>
+        <ChevronDown size={18} className="faq-icon" />
+      </button>
+      <div className="faq-body">
+        <div className="faq-content">{a}</div>
+      </div>
+    </div>
+  );
 };
-
 
 export const Home = () => {
   return (
-    <div className="container animate-fade-in" style={{ marginTop: '20px', paddingBottom: '60px' }}>
-      
-      {/* Hero Section */}
-      <section className="glass-card" style={{
-        padding: '60px 40px',
-        textAlign: 'center',
-        background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(99, 102, 241, 0.05))',
-        border: '1px solid var(--card-border)',
-        borderRadius: 'var(--radius-lg)',
-        position: 'relative',
-        overflow: 'hidden',
-        marginBottom: '50px'
-      }}>
-        {/* Background glow effects */}
-        <div style={{
-          position: 'absolute',
-          top: '-10%',
-          right: '-10%',
-          width: '300px',
-          height: '300px',
-          borderRadius: '50%',
-          background: 'rgba(16, 185, 129, 0.1)',
-          filter: 'blur(80px)',
-          pointerEvents: 'none'
-        }} />
-        <div style={{
-          position: 'absolute',
-          bottom: '-10%',
-          left: '-10%',
-          width: '300px',
-          height: '300px',
-          borderRadius: '50%',
-          background: 'rgba(99, 102, 241, 0.1)',
-          filter: 'blur(80px)',
-          pointerEvents: 'none'
-        }} />
+    <>
+      <div className="container animate-fade-in" style={{ marginTop: '20px' }}>
 
-        <h1 style={{
-          fontSize: '3.5rem',
-          fontWeight: 800,
-          lineHeight: '1.15',
-          marginBottom: '20px',
-          background: 'linear-gradient(135deg, #ffffff 40%, var(--primary), var(--secondary))',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          letterSpacing: '-0.02em'
-        }}>
-          Book Sports Facilities <br />
-          <span style={{ color: 'var(--primary)' }}>Instantly & Hassle-Free</span>
-        </h1>
-        <p style={{
-          fontSize: '1.2rem',
-          color: 'var(--text-muted)',
-          maxWidth: '650px',
-          margin: '0 auto 40px',
-          lineHeight: '1.6'
-        }}>
-          Check available real-time time slots, book professional cricket grounds, tennis courts, and pickleball arenas in Gujarat cities instantly.
-        </p>
+        {/* ── HERO ── */}
+        <section className="home-hero-section">
+          <div style={{ position: 'absolute', top: '-5%', right: '-5%', width: '340px', height: '340px', borderRadius: '50%', background: 'rgba(34,197,94,0.14)', filter: 'blur(90px)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: '-5%', left: '-5%', width: '300px', height: '300px', borderRadius: '50%', background: 'rgba(59,130,246,0.12)', filter: 'blur(90px)', pointerEvents: 'none' }} />
 
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <Link to="/facilities" className="btn btn-primary" style={{ padding: '14px 28px', fontSize: '1rem' }}>
-            Book a Slot Now
-            <ArrowRight size={18} />
-          </Link>
-          <a href="#sports-categories" className="btn btn-secondary" style={{ padding: '14px 28px', fontSize: '1rem' }}>
-            Explore Sports
-          </a>
-        </div>
-      </section>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div className="section-tag" style={{ marginBottom: '24px' }}>
+              <Zap size={11} /> Book in under 60 seconds
+            </div>
+            <h1 className="hero-title">
+              Book Sports Facilities<br />
+              Instantly & Hassle-Free
+            </h1>
+            <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', maxWidth: '580px', margin: '0 auto 36px', lineHeight: '1.7' }}>
+              Real-time slot availability for cricket grounds, tennis courts, and pickleball arenas across Gujarat. No calls, no waiting — just book.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <Link to="/facilities" className="btn btn-primary" style={{ padding: '13px 28px', fontSize: '0.9375rem' }}>
+                Book a Slot Now <ArrowRight size={17} />
+              </Link>
+              <a href="#sports-categories" className="btn btn-secondary" style={{ padding: '13px 24px', fontSize: '0.9375rem' }}>
+                Explore Sports
+              </a>
+            </div>
+          </div>
+        </section>
 
-      {/* Sports Categories Section */}
-      <section id="sports-categories" style={{ marginBottom: '60px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px' }}>Sports Categories</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>Choose your sport to find premium available stadiums and courts.</p>
+        {/* ── STATS ── */}
+        <div className="stats-row animate-stagger">
+          {STATS.map(s => (
+            <div key={s.label} className="stat-card">
+              {s.icon}
+              <div style={{ fontSize: '1.875rem', fontWeight: 900, letterSpacing: '-0.03em', color: 'var(--text-main)', lineHeight: 1.1 }}>{s.value}</div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 500 }}>{s.label}</div>
+            </div>
+          ))}
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '24px'
-        }}>
-          
-          {/* Cricket Card */}
-          <Link to="/facilities?type=cricket" className="glass-card sport-link-card" style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'flex-end',
-            overflow: 'hidden', 
-            textDecoration: 'none', 
-            color: '#fff',
-            height: '340px',
-            position: 'relative',
-            backgroundImage: 'linear-gradient(to top, rgba(9, 13, 22, 0.95) 45%, rgba(9, 13, 22, 0.2)), url("/main_cricket.jpg")',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            transition: 'all 0.3s ease',
-            border: '1px solid var(--card-border)'
-          }}>
-            <div style={{ padding: '24px', zIndex: 2 }}>
-              <div className="badge badge-success" style={{ display: 'inline-block', marginBottom: '12px' }}>Cricket</div>
-              <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '8px', color: '#fff' }}>Cricket Grounds</h3>
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '0' }}>
-                Book full-sized outfields or box cricket turfs with premium floodlights and nets.
+        {/* ── SPORTS CATEGORIES ── */}
+        <section id="sports-categories" style={{ marginBottom: '80px' }}>
+          <div className="section-header">
+            <div className="section-tag"><Trophy size={11} /> Sports</div>
+            <h2 className="section-title">Choose Your Sport</h2>
+            <p className="section-subtitle">Find premium venues across Gujarat's top cities.</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }} className="animate-stagger">
+            {[
+              { to: '/facilities?type=cricket', bg: '/main_cricket.jpg', label: 'Cricket', title: 'Cricket Grounds', desc: 'Full-sized outfields, box turfs, floodlights and professional nets.', cta: 'Browse Grounds' },
+              { to: '/facilities?type=tennis', bg: '/main_tennis.jpg', label: 'Tennis', title: 'Tennis Courts', desc: 'Indoor clay and outdoor hard courts for practice and competition.', cta: 'Browse Courts' },
+              { to: '/facilities?type=pickleball', bg: '/main_pickleball.jpg', label: 'Pickleball', title: 'Pickleball Arenas', desc: 'USAPA-approved dedicated courts for Gujarat\'s fastest-growing sport.', cta: 'Browse Arenas' },
+            ].map(sport => (
+              <Link key={sport.to} to={sport.to} className="sport-link-card"
+                style={{ backgroundImage: `url("${sport.bg}")`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                <div className="sport-card-overlay" />
+                <div style={{ padding: '24px', position: 'relative', zIndex: 2 }}>
+                  <div className="badge badge-success" style={{ marginBottom: '12px' }}>{sport.label}</div>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '8px', color: '#fff' }}>{sport.title}</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.875rem', lineHeight: '1.6', marginBottom: '0' }}>{sport.desc}</p>
+                  <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--primary)', fontWeight: 600, fontSize: '0.875rem' }}>
+                    {sport.cta} <ArrowRight size={14} />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* ── WHY CHOOSE SPORTSLOT ── */}
+        <section id="features" style={{ marginBottom: '80px' }}>
+          <div className="section-header">
+            <div className="section-tag"><ShieldCheck size={11} /> Why Us</div>
+            <h2 className="section-title">Why Choose SportSlot?</h2>
+            <p className="section-subtitle">A modern, smooth approach to sports venue reservations.</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }} className="animate-stagger">
+            {[
+              { icon: <CalendarDays size={22} />, iconBg: 'rgba(34,197,94,0.12)', iconColor: 'var(--primary)', title: 'Real-Time Slots', desc: 'Live dynamic timetables updated the moment a booking is confirmed. No stale data.' },
+              { icon: <ShieldCheck size={22} />, iconBg: 'rgba(59,130,246,0.12)', iconColor: 'var(--secondary)', title: 'Conflict-Free', desc: 'Atomic transactional checks block double-bookings. Your slot is always guaranteed.' },
+              { icon: <Undo2 size={22} />, iconBg: 'rgba(245,158,11,0.12)', iconColor: '#f59e0b', title: 'Easy Cancellations', desc: 'Plans changed? Cancel any upcoming booking from your profile before slot start time.' },
+              { icon: <Zap size={22} />, iconBg: 'rgba(34,197,94,0.12)', iconColor: 'var(--primary)', title: 'Instant Confirmation', desc: 'Get a booking confirmation email the moment your reservation goes through.' },
+            ].map(f => (
+              <div key={f.title} className="glass-card" style={{ padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="feature-icon" style={{ background: f.iconBg, color: f.iconColor }}>{f.icon}</div>
+                <div>
+                  <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-main)' }}>{f.title}</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: '1.7' }}>{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── TESTIMONIALS ── */}
+        <section style={{ marginBottom: '80px' }}>
+          <div className="section-header">
+            <div className="section-tag"><Star size={11} /> Testimonials</div>
+            <h2 className="section-title">What Players Say</h2>
+            <p className="section-subtitle">Thousands of athletes across Gujarat trust SportSlot every week.</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }} className="animate-stagger">
+            {TESTIMONIALS.map(t => (
+              <div key={t.name} className="glass-card testimonial-card">
+                <div style={{ display: 'flex', gap: '2px' }}>
+                  {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#f59e0b" stroke="none" />)}
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.75', flex: 1 }}>"{t.text}"</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="testimonial-avatar" style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}aa)` }}>{t.initials}</div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>{t.name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.role}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section style={{ marginBottom: '80px' }}>
+          <div className="section-header">
+            <div className="section-tag"><Clock size={11} /> FAQ</div>
+            <h2 className="section-title">Frequently Asked</h2>
+            <p className="section-subtitle">Everything you need to know about booking with SportSlot.</p>
+          </div>
+          <div style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {FAQS.map(f => <FaqItem key={f.q} q={f.q} a={f.a} />)}
+          </div>
+        </section>
+
+        {/* ── ABOUT + CONTACT ── */}
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+          <div className="glass-card" style={{ padding: '32px' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '14px', color: 'var(--text-main)' }}>About Us</h2>
+            <p style={{ color: 'var(--text-muted)', lineHeight: '1.75', fontSize: '0.9rem', marginBottom: '14px' }}>
+              At SportSlot, we are passionate about making professional sports venues accessible to local communities, clubs, and amateur athletes in Gujarat.
+            </p>
+            <p style={{ color: 'var(--text-muted)', lineHeight: '1.75', fontSize: '0.9rem' }}>
+              Find, filter, and reserve top-tier grounds in seconds — complete with secure digital bookings and automated slot confirmations across Ahmedabad, Surat, and Vadodara.
+            </p>
+          </div>
+
+          <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '6px', color: 'var(--text-main)' }}>Contact Us</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Questions? We're here to help.</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { icon: <Mail size={15} />, text: 'support@sportslot.com' },
+                { icon: <Phone size={15} />, text: '+91 98765 43210' },
+                { icon: <MapPin size={15} />, text: '404, Sports Tower, SG Highway, Ahmedabad' },
+              ].map(c => (
+                <div key={c.text} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  <span style={{ color: 'var(--primary)', flexShrink: 0 }}>{c.icon}</span>
+                  {c.text}
+                </div>
+              ))}
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); alert('Message sent!'); e.target.reset(); }} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input type="text" placeholder="Name" className="form-input" required />
+                <input type="email" placeholder="Email" className="form-input" required />
+              </div>
+              <textarea placeholder="Your message..." className="form-input" required rows={3} style={{ resize: 'none', minHeight: 'auto' }} />
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '11px' }}>
+                Send Message <ArrowRight size={15} />
+              </button>
+            </form>
+          </div>
+        </section>
+      </div>
+
+      {/* ── FOOTER ── */}
+      <footer className="site-footer">
+        <div className="container">
+          <div className="footer-grid">
+            {/* Brand */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '14px' }}>
+                <div className="navbar-logo-icon"><span style={{ fontSize: '16px' }}>⚡</span></div>
+                <span style={{ fontSize: '1.1rem', fontWeight: 900, letterSpacing: '-0.03em', color: 'var(--text-main)' }}>Sport<span style={{ color: 'var(--primary)' }}>Slot</span></span>
+              </div>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: '1.7', maxWidth: '260px', marginBottom: '20px' }}>
+                The easiest way to find and book professional sports venues across Gujarat.
               </p>
-              <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem' }}>
-                Browse Grounds <ArrowRight size={14} />
+              <div className="footer-social">
+                {[Twitter, Instagram, Linkedin, Github].map((Icon, i) => (
+                  <div key={i} className="social-icon"><Icon size={15} /></div>
+                ))}
               </div>
             </div>
-          </Link>
 
-          {/* Tennis Card */}
-          <Link to="/facilities?type=tennis" className="glass-card sport-link-card" style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'flex-end',
-            overflow: 'hidden', 
-            textDecoration: 'none', 
-            color: '#fff',
-            height: '340px',
-            position: 'relative',
-            backgroundImage: 'linear-gradient(to top, rgba(9, 13, 22, 0.95) 45%, rgba(9, 13, 22, 0.2)), url("/main_tennis.jpg")',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            transition: 'all 0.3s ease',
-            border: '1px solid var(--card-border)'
-          }}>
-            <div style={{ padding: '24px', zIndex: 2 }}>
-              <div className="badge badge-success" style={{ display: 'inline-block', marginBottom: '12px' }}>Tennis</div>
-              <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '8px', color: '#fff' }}>Tennis Courts</h3>
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '0' }}>
-                Reserve indoor clay or outdoor synthetic hard courts for training and games.
-              </p>
-              <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem' }}>
-                Browse Courts <ArrowRight size={14} />
-              </div>
+            {/* Links */}
+            <div>
+              <div className="footer-heading">Platform</div>
+              <Link to="/facilities" className="footer-link">Browse Facilities</Link>
+              <Link to="/facilities?type=cricket" className="footer-link">Cricket Grounds</Link>
+              <Link to="/facilities?type=tennis" className="footer-link">Tennis Courts</Link>
+              <Link to="/facilities?type=pickleball" className="footer-link">Pickleball Arenas</Link>
             </div>
-          </Link>
 
-          {/* Pickleball Card */}
-          <Link to="/facilities?type=pickleball" className="glass-card sport-link-card" style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'flex-end',
-            overflow: 'hidden', 
-            textDecoration: 'none', 
-            color: '#fff',
-            height: '340px',
-            position: 'relative',
-            backgroundImage: 'linear-gradient(to top, rgba(9, 13, 22, 0.95) 45%, rgba(9, 13, 22, 0.2)), url("/main_pickleball.jpg")',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            transition: 'all 0.3s ease',
-            border: '1px solid var(--card-border)'
-          }}>
-            <div style={{ padding: '24px', zIndex: 2 }}>
-              <div className="badge badge-success" style={{ display: 'inline-block', marginBottom: '12px' }}>Pickleball</div>
-              <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '8px', color: '#fff' }}>Pickleball Arenas</h3>
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '0' }}>
-                Play Gujarat's fastest-growing sport on USAPA-approved dedicated courts.
-              </p>
-              <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem' }}>
-                Browse Arenas <ArrowRight size={14} />
-              </div>
+            {/* Account */}
+            <div>
+              <div className="footer-heading">Account</div>
+              <Link to="/register" className="footer-link">Sign Up</Link>
+              <Link to="/login" className="footer-link">Log In</Link>
+              <Link to="/profile" className="footer-link">My Bookings</Link>
             </div>
-          </Link>
-
-        </div>
-      </section>
-
-      {/* Feature Grid */}
-      <section id="features" style={{ marginBottom: '60px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '12px' }}>Why Choose SportSlot?</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem' }}>Experience a smooth, modern approach to venue reservations.</p>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '24px'
-        }}>
-          <div className="glass-card" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ color: 'var(--primary)', background: 'rgba(16, 185, 129, 0.1)', padding: '12px', borderRadius: 'var(--radius-md)', width: 'fit-content' }}>
-              <CalendarDays size={24} />
-            </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Real-Time Slots</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.5' }}>
-              View live, dynamic timetables. Choose exact hourly slots that fit your group schedule perfectly.
-            </p>
           </div>
-          <div className="glass-card" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ color: 'var(--secondary)', background: 'rgba(99, 102, 241, 0.1)', padding: '12px', borderRadius: 'var(--radius-md)', width: 'fit-content' }}>
-              <ShieldCheck size={24} />
+
+          <div className="footer-bottom">
+            <span>© {new Date().getFullYear()} SportSlot. All rights reserved.</span>
+            <div style={{ display: 'flex', gap: '20px' }}>
+              <span className="footer-link" style={{ cursor: 'pointer' }}>Privacy Policy</span>
+              <span className="footer-link" style={{ cursor: 'pointer' }}>Terms of Service</span>
             </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Conflict-Free</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.5' }}>
-              No overlapping slots. Our atomic transactional check blocks double bookings instantaneously.
-            </p>
-          </div>
-          <div className="glass-card" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '12px', borderRadius: 'var(--radius-md)', width: 'fit-content' }}>
-              <Undo2 size={24} />
-            </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Flexible Cancellations</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.5' }}>
-              Plans changed? Cancel your booking easily from your profile page before the slot start time.
-            </p>
-          </div>
-          <div className="glass-card" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ color: 'var(--primary)', background: 'rgba(16, 185, 129, 0.1)', padding: '12px', borderRadius: 'var(--radius-md)', width: 'fit-content' }}>
-              <Zap size={24} />
-            </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Instant Processing</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.5' }}>
-              Secure reservations with direct digital confirmation. No more phone tag or manual diaries.
-            </p>
           </div>
         </div>
-      </section>
-
-      {/* About Us & Contact Us Sections */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px', marginTop: '40px' }}>
-        
-        {/* About Us */}
-        <div className="glass-card" style={{ padding: '32px' }}>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '16px', background: 'linear-gradient(to right, #fff, var(--primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            About Us
-          </h2>
-          <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', fontSize: '0.95rem', marginBottom: '16px' }}>
-            At SportSlot, we are passionate about making professional sports venues accessible to local communities, clubs, and amateur athletes in Gujarat.
-          </p>
-          <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', fontSize: '0.95rem' }}>
-            Our platform allows users to find, filter, and reserve top-tier cricket, tennis, and pickleball grounds in seconds, complete with secure digital payments and automated slot confirmations. We are dedicated to building a healthier, more active lifestyle across cities like Ahmedabad, Surat, and Vadodara.
-          </p>
-        </div>
-
-        {/* Contact Us */}
-        <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '8px', background: 'linear-gradient(to right, #fff, var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Contact Us
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Have questions? Send us a message or reach out directly.</p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: 'var(--text-main)' }}>
-            <div>📧 <strong>Email:</strong> support@sportslot.com</div>
-            <div>📞 <strong>Phone:</strong> +91 98765 43210</div>
-            <div>📍 <strong>Address:</strong> 404, Sports Tower, SG Highway, Ahmedabad, Gujarat, India</div>
-          </div>
-
-          <form onSubmit={(e) => { e.preventDefault(); alert('Message sent successfully! We will get back to you soon.'); e.target.reset(); }} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <input type="text" placeholder="Name" className="form-input" required style={{ padding: '10px' }} />
-              <input type="email" placeholder="Email" className="form-input" required style={{ padding: '10px' }} />
-            </div>
-            <textarea placeholder="Your message..." className="form-input" required rows="3" style={{ padding: '10px', resize: 'none' }}></textarea>
-            <button type="submit" className="btn btn-primary" style={{ padding: '10px 18px', width: '100%', fontSize: '0.85rem' }}>
-              Send Message
-            </button>
-          </form>
-        </div>
-
-      </section>
-
-    </div>
+      </footer>
+    </>
   );
 };

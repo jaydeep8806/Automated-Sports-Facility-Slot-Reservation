@@ -290,7 +290,7 @@ export const Profile = () => {
           {/* Bookings Display Container */}
           {bookingsLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-              <div style={{ width: '32px', height: '32px', border: '2px solid var(--card-border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+              <div className="spinner" />
             </div>
           ) : displayedBookings.length === 0 ? (
             <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center' }}>
@@ -303,7 +303,7 @@ export const Profile = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {displayedBookings.map((b) => (
-                <div key={b.id} className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid var(--card-border)' }}>
+                <div key={b.id} className="glass-card profile-booking-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid var(--card-border)' }}>
                   
                   {/* Card Header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '12px' }}>
@@ -320,7 +320,7 @@ export const Profile = () => {
                       {b.status === 'cancelled' ? (
                         <span className="badge badge-danger">Cancelled</span>
                       ) : b.isCompleted ? (
-                        <span className="badge badge-success" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', borderColor: 'var(--card-border)' }}>Completed</span>
+                        <span className="badge badge-neutral">Completed</span>
                       ) : (
                         <span className="badge badge-success">Confirmed</span>
                       )}
@@ -333,9 +333,9 @@ export const Profile = () => {
                     gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                     gap: '12px',
                     padding: '12px 16px',
-                    background: 'rgba(15, 23, 42, 0.4)',
+                    background: 'var(--bg-surface)',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(255,255,255,0.02)'
+                    border: '1px solid var(--border)'
                   }}>
                     <div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Date</span>
@@ -353,7 +353,7 @@ export const Profile = () => {
 
                   {/* Action row (Cancel active booking) */}
                   {b.status === 'confirmed' && !b.isCompleted && (
-                    <div style={{ display: 'flex', justifyContent: 'end', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'end', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
                       <button 
                         onClick={() => openCancelConfirm(b)}
                         className="btn btn-danger"

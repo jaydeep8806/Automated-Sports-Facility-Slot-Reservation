@@ -55,7 +55,10 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+        const error = new Error(data.message || 'Login failed');
+        error.unverified = data.unverified;
+        error.email = data.email;
+        throw error;
       }
 
       localStorage.setItem('sports_token', data.token);
@@ -90,6 +93,52 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const verifyEmail = async (email, otp) => {
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Verification failed');
+      }
+
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendOtp = async (email) => {
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/resend-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to resend OTP');
+      }
+
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('sports_token');
     setToken(null);
@@ -108,6 +157,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
+    verifyEmail,
+    resendOtp,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
