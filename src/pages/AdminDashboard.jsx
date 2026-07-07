@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { 
   Building2, CalendarDays, DollarSign, Users, Plus, 
-  Trash2, Edit, X, ShieldAlert, Check, Settings, Trash 
+  Trash2, Edit, X, ShieldAlert, Check, Settings, Trash, UtensilsCrossed, RefreshCw
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
@@ -55,6 +55,22 @@ export const AdminDashboard = () => {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState(null);
 
+  // Canteen States
+  const [foodItems, setFoodItems] = useState([]);
+  const [foodOrders, setFoodOrders] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [canteenLoading, setCanteenLoading] = useState(false);
+  const [foodItemForm, setFoodItemForm] = useState(null); // null = closed, {} = add, {id,...} = edit
+  const [fName, setFName] = useState('');
+  const [fDesc, setFDesc] = useState('');
+  const [fPrice, setFPrice] = useState('');
+  const [fCategoryId, setFCategoryId] = useState('');
+  const [fImageUrl, setFImageUrl] = useState('');
+  const [fIsVeg, setFIsVeg] = useState(true);
+  const [fIsAvailable, setFIsAvailable] = useState(true);
+  const [foodFormLoading, setFoodFormLoading] = useState(false);
+  const [foodMsg, setFoodMsg] = useState('');
+
   // 1. Fetch data
   const fetchData = async () => {
     setLoading(true);
@@ -99,7 +115,86 @@ export const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData();
+    fetchCanteenData();
   }, [token]);
+
+  const fetchCanteenData = async () => {
+    setCanteenLoading(true);
+    try {
+      const [itemsRes, ordersRes, catsRes] = await Promise.all([
+        fetch('http://localhost:5000/api/canteen/admin/items', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('http://localhost:5000/api/canteen/orders/all', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('http://localhost:5000/api/canteen/categories')
+      ]);
+      if (itemsRes.ok) setFoodItems(await itemsRes.json());
+      if (ordersRes.ok) setFoodOrders(await ordersRes.json());
+      if (catsRes.ok) setCategories(await catsRes.json());
+    } catch (err) { console.error(err); }
+    finally { setCanteenLoading(false); }
+  };
+
+  const openFoodItemForm = (item = null) => {
+    setFoodItemForm(item || {});
+    setFName(item?.name || '');
+    setFDesc(item?.description || '');
+    setFPrice(item?.price || '');
+    setFCategoryId(item?.category_id || '');
+    setFImageUrl(item?.image_url || '');
+    setFIsVeg(item?.is_veg !== false);
+    setFIsAvailable(item?.is_available !== false);
+    setFoodMsg('');
+  };
+
+  const handleSaveFoodItem = async (e) => {
+    e.preventDefault();
+    setFoodFormLoading(true);
+    setFoodMsg('');
+    try {
+      const isEdit = foodItemForm?.id;
+      const url = isEdit
+        ? `http://localhost:5000/api/canteen/admin/items/${foodItemForm.id}`
+        : 'http://localhost:5000/api/canteen/admin/items';
+      const res = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name: fName, description: fDesc, price: fPrice, categoryId: fCategoryId || null, imageUrl: fImageUrl, isVeg: fIsVeg, isAvailable: fIsAvailable })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setFoodMsg(isEdit ? 'Item updated!' : 'Item added!');
+      setFoodItemForm(null);
+      fetchCanteenData();
+    } catch (err) {
+      setFoodMsg(err.message || 'Failed to save item.');
+    } finally { setFoodFormLoading(false); }
+  };
+
+  const handleDeleteFoodItem = async (id) => {
+    if (!window.confirm('Delete this food item?')) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/canteen/admin/items/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) { setFoodMsg('Item deleted.'); fetchCanteenData(); }
+    } catch (err) { setFoodMsg('Failed to delete item.'); }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, orderStatus) => {
+    try {
+      await fetch(`http://localhost:5000/api/canteen/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ orderStatus })
+      });
+      fetchCanteenData();
+    } catch (err) { console.error(err); }
+  };
+
+  const orderStatusColor = (status) => {
+    const m = { pending: '#6366f1', preparing: '#f59e0b', ready: '#10b981', delivered: '#10b981', cancelled: '#ef4444' };
+    return m[status] || 'var(--text-muted)';
+  };
 
   // 2. Open Add Facility Form
   const triggerAddForm = () => {
@@ -483,6 +578,38 @@ export const AdminDashboard = () => {
               >
                 Manage Bookings ({bookings.length})
               </button>
+              <button 
+                onClick={() => setActiveTab('canteen')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: activeTab === 'canteen' ? 'var(--primary)' : 'var(--text-muted)',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '8px 16px',
+                  borderBottom: activeTab === 'canteen' ? '2px solid var(--primary)' : 'none',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                🍔 Canteen Menu ({foodItems.length})
+              </button>
+              <button 
+                onClick={() => setActiveTab('food-orders')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: activeTab === 'food-orders' ? 'var(--primary)' : 'var(--text-muted)',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '8px 16px',
+                  borderBottom: activeTab === 'food-orders' ? '2px solid var(--primary)' : 'none',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                📋 Food Orders ({foodOrders.length})
+              </button>
             </div>
 
             {/* TAB 1: Facilities List */}
@@ -544,7 +671,8 @@ export const AdminDashboard = () => {
                   </thead>
                   <tbody style={{ fontSize: '0.9rem' }}>
                     {bookings.map((b) => {
-                      const bDateStr = new Date(b.date).toISOString().split('T')[0];
+                      const bDate = new Date(b.date);
+                      const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
                       return (
                         <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                           <td style={{ padding: '12px', fontWeight: 600 }}>#{b.id}</td>
@@ -580,6 +708,214 @@ export const AdminDashboard = () => {
               </div>
             )}
 
+            {/* TAB 3: Canteen Menu Management */}
+            {activeTab === 'canteen' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ fontWeight: 700 }}>Food Items Management</h3>
+                  <button className="btn btn-primary" onClick={() => openFoodItemForm()} style={{ padding: '8px 18px', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Plus size={15} /> Add Item
+                  </button>
+                </div>
+                {foodMsg && <div style={{ padding: '10px', marginBottom: '14px', borderRadius: '8px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: 'var(--primary)', fontSize: '0.85rem' }}>{foodMsg}</div>}
+
+                {/* Add/Edit Form */}
+                {foodItemForm !== null && (
+                  <div className="glass-card" style={{ padding: '24px', marginBottom: '20px', border: '1px solid rgba(99,102,241,0.3)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <h4 style={{ fontWeight: 700 }}>{foodItemForm?.id ? 'Edit Food Item' : 'Add New Food Item'}</h4>
+                      <button onClick={() => setFoodItemForm(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+                    </div>
+                    <form onSubmit={handleSaveFoodItem} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Item Name *</label>
+                        <input className="form-input" value={fName} onChange={e => setFName(e.target.value)} placeholder="e.g. Veg Burger" required />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Price (₹) *</label>
+                        <input className="form-input" type="number" step="0.01" value={fPrice} onChange={e => setFPrice(e.target.value)} placeholder="120" required />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                        <label className="form-label">Description</label>
+                        <input className="form-input" value={fDesc} onChange={e => setFDesc(e.target.value)} placeholder="Short description..." />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Category</label>
+                        <select className="form-input" value={fCategoryId} onChange={e => setFCategoryId(e.target.value)}>
+                          <option value="">-- Select Category --</option>
+                          {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Image URL</label>
+                        <input className="form-input" value={fImageUrl} onChange={e => setFImageUrl(e.target.value)} placeholder="https://..." />
+                      </div>
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>
+                          <input type="checkbox" checked={fIsVeg} onChange={e => setFIsVeg(e.target.checked)} /> 🌿 Vegetarian
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>
+                          <input type="checkbox" checked={fIsAvailable} onChange={e => setFIsAvailable(e.target.checked)} /> ✅ Available
+                        </label>
+                      </div>
+                      <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '12px' }}>
+                        <button type="submit" className="btn btn-primary" disabled={foodFormLoading} style={{ padding: '10px 24px' }}>
+                          {foodFormLoading ? 'Saving...' : (foodItemForm?.id ? 'Update Item' : 'Add Item')}
+                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={() => setFoodItemForm(null)} style={{ padding: '10px 18px' }}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* Items Table */}
+                <div className="glass-card" style={{ overflowX: 'auto', border: '1px solid var(--card-border)', padding: '16px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        <th style={{ padding: '10px' }}>ID</th>
+                        <th style={{ padding: '10px' }}>Name</th>
+                        <th style={{ padding: '10px' }}>Category</th>
+                        <th style={{ padding: '10px' }}>Price</th>
+                        <th style={{ padding: '10px' }}>Type</th>
+                        <th style={{ padding: '10px' }}>Available</th>
+                        <th style={{ padding: '10px' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ fontSize: '0.875rem' }}>
+                      {foodItems.map(item => (
+                        <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                          <td style={{ padding: '10px', color: 'var(--text-muted)' }}>#{item.id}</td>
+                          <td style={{ padding: '10px', fontWeight: 600 }}>{item.name}</td>
+                          <td style={{ padding: '10px', color: 'var(--text-muted)' }}>{item.category_name || '—'}</td>
+                          <td style={{ padding: '10px', fontWeight: 700, color: 'var(--primary)' }}>₹{item.price}</td>
+                          <td style={{ padding: '10px' }}><span style={{ padding: '3px 10px', borderRadius: '999px', background: item.is_veg ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: item.is_veg ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 700 }}>{item.is_veg ? '🌿 Veg' : '🍗 Non-Veg'}</span></td>
+                          <td style={{ padding: '10px' }}><span style={{ padding: '3px 10px', borderRadius: '999px', background: item.is_available ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: item.is_available ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 700 }}>{item.is_available ? 'Yes' : 'No'}</span></td>
+                          <td style={{ padding: '10px' }}>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button className="btn btn-secondary" onClick={() => openFoodItemForm(item)} style={{ padding: '6px 10px', fontSize: '0.75rem' }}><Edit size={13} /></button>
+                              <button className="btn btn-danger" onClick={() => handleDeleteFoodItem(item.id)} style={{ padding: '6px 10px', fontSize: '0.75rem' }}><Trash2 size={13} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: Food Orders */}
+            {activeTab === 'food-orders' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ fontWeight: 700 }}>All Food Orders</h3>
+                  <button onClick={fetchCanteenData} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <RefreshCw size={14} /> Refresh
+                  </button>
+                </div>
+                <div className="glass-card" style={{ overflowX: 'auto', border: '1px solid var(--card-border)', padding: '16px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        <th style={{ padding: '10px' }}>Order ID</th>
+                        <th style={{ padding: '10px' }}>Customer</th>
+                        <th style={{ padding: '10px' }}>Booking & Venue</th>
+                        <th style={{ padding: '10px' }}>Ordered Items (Qty)</th>
+                        <th style={{ padding: '10px' }}>Total Amount</th>
+                        <th style={{ padding: '10px' }}>Delivery</th>
+                        <th style={{ padding: '10px' }}>Payment</th>
+                        <th style={{ padding: '10px' }}>Order Status</th>
+                        <th style={{ padding: '10px' }}>Date & Time (IST)</th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ fontSize: '0.875rem' }}>
+                      {foodOrders.map(order => {
+                        const items = Array.isArray(order.items) ? order.items : [];
+                        const totalQty = items.reduce((acc, it) => acc + (it.qty || 0), 0);
+                        
+                        const formatDateToISTString = (dateVal) => {
+                          if (!dateVal) return '—';
+                          const d = new Date(dateVal);
+                          if (isNaN(d.getTime())) return '—';
+                          const year = d.getFullYear();
+                          const month = String(d.getMonth() + 1).padStart(2, '0');
+                          const day = String(d.getDate()).padStart(2, '0');
+                          const hours = String(d.getHours()).padStart(2, '0');
+                          const minutes = String(d.getMinutes()).padStart(2, '0');
+                          return `${year}-${month}-${day} ${hours}:${minutes}`;
+                        };
+
+                        const orderDateStr = formatDateToISTString(order.created_at);
+
+                        return (
+                          <tr key={order.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', verticalAlign: 'top' }}>
+                            <td style={{ padding: '12px', fontWeight: 700 }}>#{String(order.id).padStart(4,'0')}</td>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: 600 }}>{order.user_name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{order.user_email}</div>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: 600 }}>{order.facility_name || 'Canteen'}</div>
+                              {order.booking_id && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
+                                  Booking: #{order.booking_id}
+                                </div>
+                              )}
+                              {order.facility_type && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                                  Sport: {order.facility_type}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              {items.map((it, i) => (
+                                <div key={i} style={{ fontSize: '0.8rem' }}>
+                                  {it.name} × {it.qty}
+                                </div>
+                              ))}
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', borderTop: '1px dashed var(--border)', paddingTop: '2px' }}>
+                                Total Qty: {totalQty}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: 700, color: 'var(--primary)' }}>₹{parseFloat(order.total_price).toFixed(0)}</td>
+                            <td style={{ padding: '12px', fontSize: '0.8rem' }}>{order.delivery_time === 'before' ? '⚡ Before Match' : order.delivery_time === 'during' ? '🎮 During Match' : '🏆 After Match'}</td>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize', marginBottom: '4px' }}>
+                                {order.payment_method}
+                              </div>
+                              <span style={{ padding: '3px 8px', borderRadius: '999px', background: order.payment_status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: order.payment_status === 'paid' ? '#10b981' : '#f59e0b', fontSize: '0.75rem', fontWeight: 700 }}>
+                                {order.payment_status}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <select
+                                value={order.order_status}
+                                onChange={e => handleUpdateOrderStatus(order.id, e.target.value)}
+                                style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${orderStatusColor(order.order_status)}`, background: 'var(--bg-surface)', color: orderStatusColor(order.order_status), fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}
+                              >
+                                {[
+                                  { value: 'pending', label: 'Order Placed' },
+                                  { value: 'preparing', label: 'Preparing' },
+                                  { value: 'ready', label: 'Ready' },
+                                  { value: 'delivered', label: 'Delivered' },
+                                  { value: 'cancelled', label: 'Cancelled' }
+                                ].map(s => (
+                                  <option key={s.value} value={s.value}>{s.label}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              {orderDateStr}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

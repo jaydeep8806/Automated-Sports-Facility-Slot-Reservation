@@ -10,6 +10,10 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+pool.on('connect', (client) => {
+  client.query("SET TIME ZONE 'Asia/Kolkata'").catch(err => console.error('Error setting timezone:', err));
+});
+
 export const query = (text, params) => pool.query(text, params);
 
 export const initDb = async () => {
@@ -266,6 +270,130 @@ export const initDb = async () => {
     }
 
     console.log('Seeded default facilities.');
+
+    // ─── CANTEEN TABLES ───────────────────────────────────────────────────────
+
+    // 6. Food Categories
+    await query(`
+      CREATE TABLE IF NOT EXISTS food_categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        icon VARCHAR(10) DEFAULT '🍽️',
+        display_order INTEGER DEFAULT 0
+      );
+    `);
+
+    // 7. Food Items
+    await query(`
+      CREATE TABLE IF NOT EXISTS food_items (
+        id SERIAL PRIMARY KEY,
+        category_id INTEGER REFERENCES food_categories(id) ON DELETE SET NULL,
+        facility_id INTEGER REFERENCES facilities(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        description TEXT DEFAULT '',
+        price NUMERIC(10,2) NOT NULL,
+        image_url TEXT DEFAULT '',
+        is_veg BOOLEAN DEFAULT TRUE,
+        is_available BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 8. Food Orders
+    await query(`
+      CREATE TABLE IF NOT EXISTS food_orders (
+        id SERIAL PRIMARY KEY,
+        booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        facility_id INTEGER REFERENCES facilities(id) ON DELETE SET NULL,
+        items JSONB NOT NULL DEFAULT '[]',
+        total_price NUMERIC(10,2) NOT NULL,
+        delivery_time VARCHAR(20) DEFAULT 'before',
+        payment_method VARCHAR(20) DEFAULT 'canteen',
+        payment_status VARCHAR(30) DEFAULT 'pending',
+        order_status VARCHAR(30) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 9. Seed food categories (only if empty)
+    const catCheck = await query('SELECT COUNT(*) FROM food_categories');
+    if (parseInt(catCheck.rows[0].count) === 0) {
+      console.log('Seeding food categories...');
+      const categories = [
+        { name: 'Snacks', icon: '🍿', display_order: 1 },
+        { name: 'Fast Food', icon: '🍔', display_order: 2 },
+        { name: 'Drinks', icon: '🥤', display_order: 3 },
+        { name: 'Tea & Coffee', icon: '☕', display_order: 4 },
+      ];
+      for (const cat of categories) {
+        await query(
+          'INSERT INTO food_categories (name, icon, display_order) VALUES ($1, $2, $3)',
+          [cat.name, cat.icon, cat.display_order]
+        );
+      }
+      console.log('Seeded food categories.');
+    }
+
+    // 10. Seed food items (only if empty)
+    const itemCheck = await query('SELECT COUNT(*) FROM food_items');
+    if (parseInt(itemCheck.rows[0].count) === 0) {
+      console.log('Seeding food items...');
+      // Get category ids
+      const cats = await query('SELECT id, name FROM food_categories ORDER BY display_order');
+      const catMap = {};
+      for (const c of cats.rows) catMap[c.name] = c.id;
+
+      const foodItems = [
+        // Snacks
+        { category: 'Snacks', name: 'French Fries', description: 'Crispy golden fries with seasoning and dip', price: 90, is_veg: true, image_url: 'https://images.unsplash.com/photo-1630431341973-02e1b662ec35?w=400&q=80' },
+        { category: 'Snacks', name: 'Veg Samosa (2 pcs)', description: 'Flaky pastry filled with spiced potato and peas', price: 40, is_veg: true, image_url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&q=80' },
+        { category: 'Snacks', name: 'Peanut Chikki', description: 'Classic jaggery peanut brittle, energy on the go', price: 20, is_veg: true, image_url: 'https://images.unsplash.com/photo-1548940740-204726a19be3?w=400&q=80' },
+        // Fast Food
+        { category: 'Fast Food', name: 'Veg Burger', description: 'Crispy aloo tikki patty with lettuce and special sauce', price: 120, is_veg: true, image_url: 'https://images.unsplash.com/photo-1550317138-10000687a72b?w=400&q=80' },
+        { category: 'Fast Food', name: 'Chicken Burger', description: 'Juicy grilled chicken fillet with mayo and veggies', price: 160, is_veg: false, image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80' },
+        { category: 'Fast Food', name: 'Veg Pizza (6")', description: 'Cheesy margherita with fresh veggies on thin crust', price: 250, is_veg: true, image_url: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400&q=80' },
+        { category: 'Fast Food', name: 'Veg Sandwich', description: 'Grilled veggie sandwich with mint chutney', price: 100, is_veg: true, image_url: 'https://images.unsplash.com/photo-1539252554453-80ab65ce3586?w=400&q=80' },
+        { category: 'Fast Food', name: 'Chicken Roll', description: 'Spicy chicken wrapped in flaky paratha', price: 140, is_veg: false, image_url: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&q=80' },
+        // Drinks
+        { category: 'Drinks', name: 'Coca-Cola (300 ml)', description: 'Ice-cold refreshing cola', price: 40, is_veg: true, image_url: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&q=80' },
+        { category: 'Drinks', name: 'Water Bottle (1 L)', description: 'Chilled packaged mineral water', price: 20, is_veg: true, image_url: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400&q=80' },
+        { category: 'Drinks', name: 'Fresh Lime Soda', description: 'Sweet or salted – your choice', price: 50, is_veg: true, image_url: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400&q=80' },
+        // Tea & Coffee
+        { category: 'Tea & Coffee', name: 'Masala Chai', description: 'Traditional spiced milk tea', price: 20, is_veg: true, image_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80' },
+        { category: 'Tea & Coffee', name: 'Hot Coffee', description: 'Rich filter coffee or instant — pick your brew', price: 40, is_veg: true, image_url: 'https://images.unsplash.com/photo-1497515114629-f71d768fd07c?w=400&q=80' },
+      ];
+
+      for (const item of foodItems) {
+        await query(
+          `INSERT INTO food_items (category_id, name, description, price, image_url, is_veg, is_available)
+           VALUES ($1, $2, $3, $4, $5, $6, TRUE)`,
+          [catMap[item.category], item.name, item.description, item.price, item.image_url, item.is_veg]
+        );
+      }
+      console.log('Seeded food items.');
+    } else {
+      // Always refresh image URLs so fixes propagate to existing DB rows
+      const imageUpdates = [
+        { name: 'French Fries',         image_url: 'https://images.unsplash.com/photo-1630431341973-02e1b662ec35?w=400&q=80' },
+        { name: 'Veg Samosa (2 pcs)',    image_url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&q=80' },
+        { name: 'Peanut Chikki',         image_url: 'https://images.unsplash.com/photo-1548940740-204726a19be3?w=400&q=80' },
+        { name: 'Veg Burger',            image_url: 'https://images.unsplash.com/photo-1550317138-10000687a72b?w=400&q=80' },
+        { name: 'Chicken Burger',        image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80' },
+        { name: 'Veg Pizza (6")',        image_url: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400&q=80' },
+        { name: 'Veg Sandwich',          image_url: 'https://images.unsplash.com/photo-1539252554453-80ab65ce3586?w=400&q=80' },
+        { name: 'Chicken Roll',          image_url: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&q=80' },
+        { name: 'Coca-Cola (300 ml)',    image_url: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&q=80' },
+        { name: 'Water Bottle (1 L)',    image_url: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400&q=80' },
+        { name: 'Fresh Lime Soda',       image_url: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400&q=80' },
+        { name: 'Masala Chai',           image_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80' },
+        { name: 'Hot Coffee',            image_url: 'https://images.unsplash.com/photo-1497515114629-f71d768fd07c?w=400&q=80' },
+      ];
+      for (const u of imageUpdates) {
+        await query('UPDATE food_items SET image_url = $1 WHERE name = $2', [u.image_url, u.name]);
+      }
+      console.log('Refreshed food item images.');
+    }
 
 
 

@@ -1,10 +1,12 @@
 import express from 'express';
+process.env.TZ = 'Asia/Kolkata';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { initDb } from './db.js';
 import authRouter from './routes/auth.js';
 import facilitiesRouter from './routes/facilities.js';
 import bookingsRouter from './routes/bookings.js';
+import canteenRouter from './routes/canteen.js';
 
 dotenv.config();
 
@@ -30,6 +32,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/facilities', facilitiesRouter);
 app.use('/api/bookings', bookingsRouter);
+app.use('/api/canteen', canteenRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

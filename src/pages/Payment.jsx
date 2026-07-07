@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { CreditCard, Landmark, QrCode, ShieldCheck, Undo2, Calendar, Clock, MapPin, DollarSign, Wallet, Activity } from 'lucide-react';
+import { CreditCard, Landmark, QrCode, ShieldCheck, Undo2, Calendar, Clock, MapPin, DollarSign, Wallet, Activity, UtensilsCrossed } from 'lucide-react';
 
 export const Payment = () => {
   const location = useLocation();
@@ -43,6 +43,8 @@ export const Payment = () => {
     );
   }
 
+  const [createdBookingIds, setCreatedBookingIds] = useState([]);
+
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -75,10 +77,10 @@ export const Payment = () => {
           throw new Error(data.message || 'Payment authentication succeeded, but booking reservation failed.');
         }
 
+        // Store the first booking ID for canteen link
+        const ids = data.bookings ? data.bookings.map(b => b.id) : (data.booking ? [data.booking.id] : []);
+        setCreatedBookingIds(ids);
         setSuccess(true);
-        setTimeout(() => {
-          navigate('/profile');
-        }, 2500);
 
       } catch (err) {
         setErrorMsg(err.message || 'Payment processing error.');
@@ -105,7 +107,7 @@ export const Payment = () => {
       </div>
 
       {success ? (
-        <div className="glass-card animate-scale-up" style={{ padding: '60px 40px', maxWidth: '600px', margin: '0 auto', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+        <div className="glass-card animate-scale-up" style={{ padding: '48px 40px', maxWidth: '600px', margin: '0 auto', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
           <div style={{ 
             width: '80px', 
             height: '80px', 
@@ -119,9 +121,37 @@ export const Payment = () => {
           }}>
             <ShieldCheck size={40} style={{ color: 'rgb(16, 185, 129)' }} />
           </div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '12px', color: 'rgb(16, 185, 129)' }}>Payment Successful!</h2>
-          <p style={{ color: 'var(--text-main)', fontSize: '1.05rem', fontWeight: 500 }}>Your slot bookings have been confirmed.</p>
-          <p style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '0.9rem' }}>Redirecting to your booking dashboard in a moment...</p>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '12px', color: 'rgb(16, 185, 129)' }}>Booking Confirmed! 🎉</h2>
+          <p style={{ color: 'var(--text-main)', fontSize: '1.05rem', fontWeight: 500, marginBottom: '6px' }}>Your slot at <strong>{facilityName}</strong> is reserved.</p>
+          {createdBookingIds.length > 0 && (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '32px' }}>Booking ID: {createdBookingIds.map(id => `#${id}`).join(', ')}</p>
+          )}
+
+          {/* Canteen CTA */}
+          <div style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.08))', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🍔</div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '8px' }}>Hungry? Order Food from the Canteen!</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '18px' }}>Get snacks, fast food, and drinks delivered to your seat during the match.</p>
+            <button
+              onClick={() => navigate(`/canteen?bookingId=${createdBookingIds[0] || ''}&facilityId=${facilityId}&facilityName=${encodeURIComponent(facilityName || '')}`)}
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                color: '#fff', border: 'none', padding: '13px 28px',
+                borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem',
+                cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
+                gap: '8px', boxShadow: '0 4px 16px rgba(245,158,11,0.3)',
+                transition: 'transform 0.2s, box-shadow 0.2s'
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(245,158,11,0.4)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(245,158,11,0.3)'; }}
+            >
+              <UtensilsCrossed size={18} /> Order Food from Canteen
+            </button>
+          </div>
+
+          <button onClick={() => navigate('/profile')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}>
+            Skip — Go to my bookings
+          </button>
         </div>
       ) : (
         <div style={{

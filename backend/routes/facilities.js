@@ -113,7 +113,8 @@ router.get('/:id/slots', async (req, res) => {
     const slots = [];
     
     // Check current local time (if date selected is today, we prevent booking past times)
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const isToday = date === todayStr;
     
     let currentMinutes = 0;

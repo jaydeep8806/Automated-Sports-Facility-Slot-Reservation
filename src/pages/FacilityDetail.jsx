@@ -44,7 +44,10 @@ export const FacilityDetail = () => {
   const [loading, setLoading] = useState(true);
 
   // Date and Slots states
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const getTodayStr = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  };
   const [selectedDate, setSelectedDate] = useState(getTodayStr());
   const [slots, setSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);

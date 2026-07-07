@@ -15,6 +15,9 @@ import { FacilityDetail } from './pages/FacilityDetail';
 import { Payment } from './pages/Payment';
 import { Profile } from './pages/Profile';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { CanteenMenu } from './pages/CanteenMenu';
+import { CanteenCheckout } from './pages/CanteenCheckout';
+import { CanteenConfirmation } from './pages/CanteenConfirmation';
 
 function App() {
   return (
@@ -53,6 +56,32 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Canteen Routes */}
+              <Route 
+                path="/canteen" 
+                element={
+                  <ProtectedRoute>
+                    <CanteenMenu />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/canteen/checkout" 
+                element={
+                  <ProtectedRoute>
+                    <CanteenCheckout />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/canteen/confirmation" 
+                element={
+                  <ProtectedRoute>
+                    <CanteenConfirmation />
                   </ProtectedRoute>
                 } 
               />

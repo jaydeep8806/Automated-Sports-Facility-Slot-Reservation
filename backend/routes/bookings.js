@@ -14,6 +14,15 @@ const timeToMinutes = (timeStr) => {
   return hours * 60 + minutes;
 };
 
+// Helper: Format date to local YYYY-MM-DD
+const formatToYYYYMMDD = (d) => {
+  const dateObj = new Date(d);
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // @route   POST /api/bookings
 // @desc    Create a new slot booking (guarded, checks overlap conflicts)
 // @access  Private
@@ -33,7 +42,7 @@ router.post('/', auth, async (req, res) => {
     }
 
     // 2. Prevent booking slots in the past
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = formatToYYYYMMDD(new Date());
     if (date < todayStr) {
       return res.status(400).json({ message: 'Cannot book slots on a past date.' });
     }
@@ -181,8 +190,8 @@ router.put('/:id/cancel', auth, async (req, res) => {
 
     // 4. Time Check: Cannot cancel past bookings (Only restrict users, allow admins to override if needed)
     if (userRole !== 'admin') {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const bookingDateStr = booking.date.toISOString().split('T')[0]; // PG date type might return Date object
+      const todayStr = formatToYYYYMMDD(new Date());
+      const bookingDateStr = formatToYYYYMMDD(new Date(booking.date));
 
       if (bookingDateStr < todayStr) {
         return res.status(400).json({ message: 'Cannot cancel reservations for past dates.' });
