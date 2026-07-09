@@ -50,6 +50,14 @@ export const initDb = async () => {
       } catch (e) {}
     }
 
+    // 0b. Drop and recreate all tables if schema is stale (fresh deploy safety)
+    await query(`DROP TABLE IF EXISTS canteen_orders CASCADE;`);
+    await query(`DROP TABLE IF EXISTS canteen_items CASCADE;`);
+    await query(`DROP TABLE IF EXISTS bookings CASCADE;`);
+    await query(`DROP TABLE IF EXISTS facilities CASCADE;`);
+    await query(`DROP TABLE IF EXISTS users CASCADE;`);
+    console.log('Dropped all existing tables for fresh schema creation.');
+
     // 1. Create Users Table
     await query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -64,14 +72,6 @@ export const initDb = async () => {
         otp_expiry TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-    `);
-
-    // Ensure table has the status, verification_otp and otp_expiry columns if it was already created
-    await query(`
-      ALTER TABLE users 
-      ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Unverified',
-      ADD COLUMN IF NOT EXISTS verification_otp VARCHAR(6),
-      ADD COLUMN IF NOT EXISTS otp_expiry TIMESTAMP;
     `);
 
     // 2. Create Facilities Table
