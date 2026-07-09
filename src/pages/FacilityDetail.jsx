@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { MapPin, Info, CalendarCheck2, ShieldAlert, Sparkles, Check } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
 const SPORT_IMAGES = {
   cricket: '/img_cricket.png',
   tennis: '/img_tennis.png',
@@ -62,7 +65,7 @@ export const FacilityDetail = () => {
   useEffect(() => {
     const fetchFacilityDetails = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/facilities/${id}`);
+        const response = await fetch(`${API_BASE_URL}/api/facilities/${id}`);
         if (response.ok) {
           const data = await response.json();
           setFacility(data);
@@ -85,7 +88,7 @@ export const FacilityDetail = () => {
     setSelectedSlots([]);
     setErrorMessage('');
     try {
-      const response = await fetch(`http://localhost:5000/api/facilities/${id}/slots?date=${selectedDate}`);
+      const response = await fetch(`${API_BASE_URL}/api/facilities/${id}/slots?date=${selectedDate}`);
       if (response.ok) {
         const data = await response.json();
         setSlots(data.slots);

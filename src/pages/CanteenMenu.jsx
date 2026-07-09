@@ -6,7 +6,10 @@ import {
   Leaf, Drumstick, Search, X, UtensilsCrossed, ArrowRight
 } from 'lucide-react';
 
-const API = 'http://localhost:5000/api/canteen';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
+const API = API_BASE_URL + '/api/canteen';
 
 export const CanteenMenu = () => {
   const { token } = useAuth();

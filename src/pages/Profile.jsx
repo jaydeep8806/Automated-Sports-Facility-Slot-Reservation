@@ -4,6 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { User, Phone, Mail, Lock, History, ClipboardCheck, Trash2, ShieldAlert, Check, UtensilsCrossed, AlertCircle } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
 export const Profile = () => {
   const { user, token, updateUser, deleteAccount } = useAuth();
   const navigate = useNavigate();
@@ -74,7 +77,7 @@ export const Profile = () => {
   // 1. Fetch user bookings
   const fetchMyBookings = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/bookings/my-bookings', {
+      const response = await fetch(API_BASE_URL + '/api/bookings/my-bookings', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -108,7 +111,7 @@ export const Profile = () => {
   const fetchMyFoodOrders = async () => {
     setFoodOrdersLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/canteen/my-orders', {
+      const res = await fetch(API_BASE_URL + '/api/canteen/my-orders', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -140,7 +143,7 @@ export const Profile = () => {
     setFoodCancelError('');
     setFoodMsg('');
     try {
-      const res = await fetch(`http://localhost:5000/api/canteen/orders/${orderToCancel.id}/cancel`, {
+      const res = await fetch(`${API_BASE_URL}/api/canteen/orders/${orderToCancel.id}/cancel`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -210,7 +213,7 @@ export const Profile = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch(API_BASE_URL + '/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -264,7 +267,7 @@ export const Profile = () => {
     setBookingMsg('');
 
     try {
-      const response = await fetch(`http://localhost:5000/api/bookings/${bookingToCancel.id}/cancel`, {
+      const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingToCancel.id}/cancel`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`

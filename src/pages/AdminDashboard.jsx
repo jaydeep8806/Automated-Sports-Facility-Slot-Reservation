@@ -6,6 +6,9 @@ import {
   Trash2, Edit, X, ShieldAlert, Check, Settings, Trash, UtensilsCrossed, RefreshCw
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
 export const AdminDashboard = () => {
   const { token } = useAuth();
 
@@ -77,7 +80,7 @@ export const AdminDashboard = () => {
     setErrorMsg('');
     try {
       // Fetch facilities
-      const facRes = await fetch('http://localhost:5000/api/facilities');
+      const facRes = await fetch(API_BASE_URL + '/api/facilities');
       let facData = [];
       if (facRes.ok) {
         facData = await facRes.json();
@@ -85,7 +88,7 @@ export const AdminDashboard = () => {
       }
 
       // Fetch bookings
-      const bookRes = await fetch('http://localhost:5000/api/bookings/all', {
+      const bookRes = await fetch(API_BASE_URL + '/api/bookings/all', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       let bookData = [];
@@ -122,9 +125,9 @@ export const AdminDashboard = () => {
     setCanteenLoading(true);
     try {
       const [itemsRes, ordersRes, catsRes] = await Promise.all([
-        fetch('http://localhost:5000/api/canteen/admin/items', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/canteen/orders/all', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/canteen/categories')
+        fetch(API_BASE_URL + '/api/canteen/admin/items', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(API_BASE_URL + '/api/canteen/orders/all', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(API_BASE_URL + '/api/canteen/categories')
       ]);
       if (itemsRes.ok) setFoodItems(await itemsRes.json());
       if (ordersRes.ok) setFoodOrders(await ordersRes.json());
@@ -152,8 +155,8 @@ export const AdminDashboard = () => {
     try {
       const isEdit = foodItemForm?.id;
       const url = isEdit
-        ? `http://localhost:5000/api/canteen/admin/items/${foodItemForm.id}`
-        : 'http://localhost:5000/api/canteen/admin/items';
+        ? `${API_BASE_URL}/api/canteen/admin/items/${foodItemForm.id}`
+        : API_BASE_URL + '/api/canteen/admin/items';
       const res = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -172,7 +175,7 @@ export const AdminDashboard = () => {
   const handleDeleteFoodItem = async (id) => {
     if (!window.confirm('Delete this food item?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/canteen/admin/items/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/canteen/admin/items/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -182,7 +185,7 @@ export const AdminDashboard = () => {
 
   const handleUpdateOrderStatus = async (orderId, orderStatus) => {
     try {
-      await fetch(`http://localhost:5000/api/canteen/orders/${orderId}/status`, {
+      await fetch(`${API_BASE_URL}/api/canteen/orders/${orderId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ orderStatus })
@@ -262,8 +265,8 @@ export const AdminDashboard = () => {
 
     try {
       const url = editingFacility 
-        ? `http://localhost:5000/api/facilities/${editingFacility.id}` 
-        : 'http://localhost:5000/api/facilities';
+        ? `${API_BASE_URL}/api/facilities/${editingFacility.id}` 
+        : API_BASE_URL + '/api/facilities';
         
       const method = editingFacility ? 'PUT' : 'POST';
 
@@ -303,7 +306,7 @@ export const AdminDashboard = () => {
   const handleDeleteFacility = async () => {
     if (!facilityToDelete) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/facilities/${facilityToDelete.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/facilities/${facilityToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -332,7 +335,7 @@ export const AdminDashboard = () => {
   const handleCancelBooking = async () => {
     if (!bookingToCancel) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingToCancel.id}/cancel`, {
+      const res = await fetch(`${API_BASE_URL}/api/bookings/${bookingToCancel.id}/cancel`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`

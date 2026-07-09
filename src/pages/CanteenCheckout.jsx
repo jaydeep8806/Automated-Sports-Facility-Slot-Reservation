@@ -6,7 +6,10 @@ import {
   Utensils, Wallet, MapPin, Check, AlertCircle
 } from 'lucide-react';
 
-const API = 'http://localhost:5000/api/canteen';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
+const API = API_BASE_URL + '/api/canteen';
 
 export const CanteenCheckout = () => {
   const { token } = useAuth();

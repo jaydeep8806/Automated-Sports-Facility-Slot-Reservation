@@ -1,5 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -17,7 +20,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const response = await fetch('http://localhost:5000/api/auth/me', {
+        const response = await fetch(API_BASE_URL + '/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -44,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(API_BASE_URL + '/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +76,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password, phone) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch(API_BASE_URL + '/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +99,7 @@ export const AuthProvider = ({ children }) => {
   const verifyEmail = async (email, otp) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/auth/verify-email', {
+      const response = await fetch(API_BASE_URL + '/api/auth/verify-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +122,7 @@ export const AuthProvider = ({ children }) => {
   const resendOtp = async (email) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/auth/resend-otp', {
+      const response = await fetch(API_BASE_URL + '/api/auth/resend-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +151,7 @@ export const AuthProvider = ({ children }) => {
   const deleteAccount = async () => {
     const currentToken = localStorage.getItem('sports_token');
     if (!currentToken) return;
-    const response = await fetch('http://localhost:5000/api/auth/account', {
+    const response = await fetch(API_BASE_URL + '/api/auth/account', {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${currentToken}`,

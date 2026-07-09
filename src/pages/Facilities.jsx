@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, MapPin, SlidersHorizontal, Dumbbell, Star, Heart } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
 const SPORT_IMAGES = {
   cricket: '/img_cricket.png',
   tennis: '/img_tennis.png',
@@ -71,7 +74,7 @@ export const Facilities = () => {
   const fetchFacilities = async () => {
     setLoading(true);
     try {
-      const url = new URL('http://localhost:5000/api/facilities');
+      const url = new URL(API_BASE_URL + '/api/facilities');
       if (search) url.searchParams.append('search', search);
       if (type && type !== 'all') url.searchParams.append('type', type);
       if (maxPrice) url.searchParams.append('maxPrice', maxPrice);

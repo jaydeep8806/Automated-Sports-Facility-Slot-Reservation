@@ -6,7 +6,10 @@ import {
   ChefHat, Truck, PackageCheck, RefreshCw, BellRing, User
 } from 'lucide-react';
 
-const API = 'http://localhost:5000/api/canteen';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
+const API = API_BASE_URL + '/api/canteen';
 
 const STATUS_STEPS = [
   { key: 'pending', label: 'Order Placed', icon: <CheckCircle2 size={18} />, color: '#6366f1' },

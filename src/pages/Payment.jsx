@@ -3,6 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CreditCard, Landmark, QrCode, ShieldCheck, Undo2, Calendar, Clock, MapPin, DollarSign, Wallet, Activity, UtensilsCrossed } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
 export const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -53,7 +56,7 @@ export const Payment = () => {
     // Simulate network delay for verification
     setTimeout(async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/bookings', {
+        const response = await fetch(API_BASE_URL + '/api/bookings', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
