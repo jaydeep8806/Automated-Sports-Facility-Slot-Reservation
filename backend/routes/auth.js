@@ -274,4 +274,27 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
+// @route   DELETE /api/auth/account
+// @desc    Permanently delete the authenticated user's account and all related data
+// @access  Private
+router.delete('/account', auth, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    // Delete food orders (items are stored as JSONB, no separate items table)
+    await query('DELETE FROM food_orders WHERE user_id = $1', [userId]);
+
+    // Delete sport ground bookings
+    await query('DELETE FROM bookings WHERE user_id = $1', [userId]);
+
+    // Finally delete the user
+    await query('DELETE FROM users WHERE id = $1', [userId]);
+
+    res.json({ message: 'Account deleted successfully.' });
+  } catch (err) {
+    console.error('Delete account error:', err);
+    res.status(500).json({ message: 'Server error. Could not delete account.' });
+  }
+});
+
 export default router;

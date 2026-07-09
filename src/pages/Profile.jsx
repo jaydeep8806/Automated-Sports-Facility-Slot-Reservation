@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
-import { User, Phone, Mail, Lock, History, ClipboardCheck, Trash2, ShieldAlert, Check, UtensilsCrossed, RefreshCw } from 'lucide-react';
+import { User, Phone, Mail, Lock, History, ClipboardCheck, Trash2, ShieldAlert, Check, UtensilsCrossed, AlertCircle } from 'lucide-react';
 
 export const Profile = () => {
-  const { user, token, updateUser } = useAuth();
+  const { user, token, updateUser, deleteAccount } = useAuth();
   const navigate = useNavigate();
 
   // India Standard Time (Asia/Kolkata) helpers at component scope
@@ -61,6 +61,15 @@ export const Profile = () => {
   const [foodCancelModalOpen, setFoodCancelModalOpen] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [foodCancelError, setFoodCancelError] = useState('');
+
+  // Delete account modal states
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  // Inline field validation errors (profile form)
+  const [phoneError, setPhoneError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   // 1. Fetch user bookings
   const fetchMyBookings = async () => {
@@ -155,12 +164,50 @@ export const Profile = () => {
     return map[status] || 'var(--text-muted)';
   };
 
+  // Phone: allow only digits, max 10
+  const handlePhoneChange = (val) => {
+    const digits = val.replace(/\D/g, '').slice(0, 10);
+    setPhone(digits);
+    if (digits.length > 0 && digits.length < 10) {
+      setPhoneError('Phone number must be exactly 10 digits.');
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  // Password: min 6, max 12 (blank = keep current)
+  const handlePasswordChange = (val) => {
+    setPassword(val);
+    if (val.length > 0 && val.length < 6) {
+      setPasswordError('Password must be at least 6 characters.');
+    } else if (val.length > 12) {
+      setPasswordError('Password must be at most 12 characters.');
+    } else {
+      setPasswordError('');
+    }
+  };
+
   // 2. Submit Profile Update
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setProfileLoading(true);
     setProfileSuccess('');
     setProfileError('');
+
+    // Validate phone
+    if (phone.length !== 10) {
+      setPhoneError('Phone number must be exactly 10 digits.');
+      setProfileError('Please fix the validation errors below.');
+      setProfileLoading(false);
+      return;
+    }
+    // Validate password if provided
+    if (password && (password.length < 6 || password.length > 12)) {
+      setPasswordError(password.length < 6 ? 'Password must be at least 6 characters.' : 'Password must be at most 12 characters.');
+      setProfileError('Please fix the validation errors below.');
+      setProfileLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch('http://localhost:5000/api/auth/profile', {
@@ -181,10 +228,24 @@ export const Profile = () => {
       setProfileSuccess('Profile credentials updated successfully!');
       updateUser(data.user);
       setPassword(''); // clear password
+      setPasswordError('');
     } catch (err) {
       setProfileError(err.message || 'Failed to update profile.');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  // Handle Account Deletion
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      await deleteAccount();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      setDeleteError(err.message || 'Failed to delete account.');
+      setDeleteLoading(false);
     }
   };
 
@@ -327,29 +388,45 @@ export const Profile = () => {
               <div style={{ position: 'relative' }}>
                 <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dark)' }} />
                 <input 
-                  type="tel" 
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
                   className="form-input" 
+                  placeholder="10-digit mobile number"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  style={{ paddingLeft: '40px' }}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  style={{ paddingLeft: '40px', borderColor: phoneError ? 'var(--danger)' : undefined }}
                   required
                 />
               </div>
+              {phoneError ? (
+                <p style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <AlertCircle size={12} /> {phoneError}
+                </p>
+              ) : phone.length === 10 ? (
+                <p style={{ color: '#10b981', fontSize: '0.78rem', marginTop: '4px' }}>✓ Valid phone number</p>
+              ) : null}
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Change Password (Leave blank to keep current)</label>
+              <label className="form-label">Change Password (Leave blank to keep current, 6–12 chars)</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dark)' }} />
                 <input 
                   type="password" 
                   className="form-input" 
-                  placeholder="New password (min. 6 chars)"
+                  placeholder="New password (6–12 characters)"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingLeft: '40px' }}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
+                  style={{ paddingLeft: '40px', borderColor: passwordError ? 'var(--danger)' : undefined }}
                 />
               </div>
+              {passwordError && (
+                <p style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <AlertCircle size={12} /> {passwordError}
+                </p>
+              )}
             </div>
 
             <button 
@@ -361,6 +438,35 @@ export const Profile = () => {
               {profileLoading ? 'Saving changes...' : 'Save Profile Details'}
             </button>
           </form>
+
+          {/* Danger Zone: Delete Account */}
+          <div style={{ marginTop: '28px', paddingTop: '24px', borderTop: '1px solid rgba(239,68,68,0.2)' }}>
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--danger)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldAlert size={16} /> Danger Zone
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '14px', lineHeight: 1.5 }}>
+              Permanently delete your account and all associated data. This action cannot be undone.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setDeleteError(''); setDeleteModalOpen(true); }}
+              style={{
+                width: '100%', padding: '11px',
+                borderRadius: 'var(--radius-md)',
+                border: '1.5px solid var(--danger)',
+                background: 'rgba(239,68,68,0.06)',
+                color: 'var(--danger)',
+                fontWeight: 700, fontSize: '0.875rem',
+                cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', gap: '8px',
+                transition: 'background 0.2s'
+              }}
+              onMouseOver={e => e.currentTarget.style.background = 'rgba(239,68,68,0.14)'}
+              onMouseOut={e => e.currentTarget.style.background = 'rgba(239,68,68,0.06)'}
+            >
+              <Trash2 size={16} /> Delete My Account
+            </button>
+          </div>
         </div>
 
         {/* Right Side: Booking listings */}
@@ -725,6 +831,52 @@ export const Profile = () => {
               disabled={foodCancelLoading[orderToCancel?.id]}
             >
               {foodCancelLoading[orderToCancel?.id] ? 'Cancelling...' : 'Yes, Cancel Order'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Account?"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ef4444' }}>
+            <ShieldAlert size={28} />
+            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>Are you sure you want to permanently delete your account?</h4>
+          </div>
+          <p style={{ fontSize: '0.9rem', lineHeight: '1.6', margin: 0, color: 'var(--text-muted)' }}>
+            This will permanently delete your account, all your bookings, and food order history. <strong style={{ color: 'var(--text-main)' }}>This action cannot be undone.</strong>
+          </p>
+          <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '12px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.82rem', color: 'var(--danger)', lineHeight: 1.5 }}>
+            ⚠️ All your data — profile, reservations, food orders — will be erased immediately.
+          </div>
+
+          {deleteError && (
+            <div className="badge-danger" style={{ display: 'flex', gap: '6px', padding: '10px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem' }}>
+              <ShieldAlert size={14} />
+              <span>{deleteError}</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'end', marginTop: '4px' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={deleteLoading}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Trash2 size={14} />
+              {deleteLoading ? 'Deleting...' : 'Delete Account'}
             </button>
           </div>
         </div>

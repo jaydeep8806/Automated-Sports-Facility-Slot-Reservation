@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, Mail, Lock, AlertCircle, Zap } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 
 export const Login = () => {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
+
+  // Redirect to Home if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,7 +25,7 @@ export const Login = () => {
     setError('');
     try {
       await login(email, password);
-      navigate('/facilities');
+      navigate('/'); // Redirect to Home page after successful login
     } catch (err) {
       if (err.unverified) {
         alert('Your email is not verified. Redirecting to verification...');
@@ -87,8 +94,6 @@ export const Login = () => {
             <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>Sign up free</Link>
           </p>
         </div>
-
-
 
       </div>
     </div>

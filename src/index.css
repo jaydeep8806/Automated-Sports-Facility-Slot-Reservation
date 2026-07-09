@@ -1,12 +1,12 @@
-/* =========================================================
-   SportSlot — Premium Design System
+ï»¿/* =========================================================
+   SportSlot â€” Premium Design System
    ========================================================= */
 
-/* Google Fonts — Inter */
+/* Google Fonts â€” Inter */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 /* =========================================================
-   1. DESIGN TOKENS — DARK THEME (DEFAULT)
+   1. DESIGN TOKENS â€” DARK THEME (DEFAULT)
    ========================================================= */
 :root {
   /* Backgrounds */
@@ -300,7 +300,7 @@ button { font-family: var(--font-sans); cursor: pointer; }
   box-shadow: var(--shadow-lg);
 }
 
-/* Facility/Ground cards — enhanced hover */
+/* Facility/Ground cards â€” enhanced hover */
 .grid-container .glass-card:hover,
 .facility-card:hover,
 .profile-booking-card:hover {

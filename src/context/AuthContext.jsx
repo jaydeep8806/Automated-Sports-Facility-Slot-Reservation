@@ -145,6 +145,22 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const deleteAccount = async () => {
+    const currentToken = localStorage.getItem('sports_token');
+    if (!currentToken) return;
+    const response = await fetch('http://localhost:5000/api/auth/account', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${currentToken}`,
+      },
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || 'Failed to delete account.');
+    }
+    logout();
+  };
+
   const updateUser = (updatedUserData) => {
     setUser(updatedUserData);
   };
@@ -156,6 +172,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    deleteAccount,
     updateUser,
     verifyEmail,
     resendOtp,

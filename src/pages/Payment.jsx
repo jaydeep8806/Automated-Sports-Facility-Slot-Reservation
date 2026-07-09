@@ -274,11 +274,36 @@ export const Payment = () => {
                       <input 
                         type="text" 
                         className="form-input" 
-                        maxLength="5"
-                        placeholder="MM/YY"
+                        maxLength={7}
+                        placeholder="MM / YY"
                         required
                         value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
+                        onChange={(e) => {
+                          // Strip everything except digits
+                          const raw = e.target.value.replace(/\D/g, '');
+                          if (raw.length === 0) {
+                            setCardExpiry('');
+                            return;
+                          }
+                          // Validate month (01–12) as user types 2nd digit
+                          if (raw.length >= 2) {
+                            const month = parseInt(raw.slice(0, 2), 10);
+                            if (month < 1 || month > 12) return; // block invalid month
+                          }
+                          // Auto-insert ' / ' separator after 2 month digits
+                          if (raw.length <= 2) {
+                            setCardExpiry(raw);
+                          } else {
+                            setCardExpiry(raw.slice(0, 2) + ' / ' + raw.slice(2, 4));
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          // Allow backspace to clear separator nicely
+                          if (e.key === 'Backspace' && cardExpiry.endsWith(' / ')) {
+                            e.preventDefault();
+                            setCardExpiry(cardExpiry.slice(0, 2));
+                          }
+                        }}
                       />
                     </div>
                     <div className="form-group">
