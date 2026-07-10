@@ -3,12 +3,12 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Create transporter only if email config is provided and is not the default placeholder
 const isConfigured = 
   process.env.EMAIL_USER && 
   process.env.EMAIL_PASS && 
   process.env.EMAIL_USER !== 'your-gmail@gmail.com' &&
-  process.env.EMAIL_PASS !== 'your-16-character-gmail-app-password';
+  process.env.EMAIL_PASS !== 'your-16-character-gmail-app-password' &&
+  process.env.DISABLE_EMAIL !== 'true';
 
 let transporter = null;
 if (isConfigured) {
