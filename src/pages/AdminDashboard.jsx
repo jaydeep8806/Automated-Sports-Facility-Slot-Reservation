@@ -32,7 +32,8 @@ export const AdminDashboard = () => {
   const [filterLocation, setFilterLocation] = useState('all');
   const [searchVal, setSearchVal] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterBookingStatus, setFilterBookingStatus] = useState('all');
+  const [filterOrderStatus, setFilterOrderStatus] = useState('all');
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
   const [filterDate, setFilterDate] = useState('');
 
@@ -118,7 +119,7 @@ export const AdminDashboard = () => {
       const bookUrl = new URL(API_BASE_URL + '/api/bookings/all');
       bookUrl.searchParams.append('location', filterLocation);
       bookUrl.searchParams.append('search', filterSearch);
-      bookUrl.searchParams.append('status', filterStatus);
+      bookUrl.searchParams.append('status', filterBookingStatus);
       bookUrl.searchParams.append('date', filterDate);
       bookUrl.searchParams.append('page', bookingsPage);
       bookUrl.searchParams.append('limit', bookingsLimit);
@@ -155,7 +156,7 @@ export const AdminDashboard = () => {
       const ordersUrl = new URL(API_BASE_URL + '/api/canteen/orders/all');
       ordersUrl.searchParams.append('location', filterLocation);
       ordersUrl.searchParams.append('search', filterSearch);
-      ordersUrl.searchParams.append('orderStatus', filterStatus);
+      ordersUrl.searchParams.append('orderStatus', filterOrderStatus);
       ordersUrl.searchParams.append('paymentStatus', filterPaymentStatus);
       ordersUrl.searchParams.append('date', filterDate);
       ordersUrl.searchParams.append('page', ordersPage);
@@ -181,13 +182,25 @@ export const AdminDashboard = () => {
     if (token) {
       fetchData();
     }
-  }, [token, filterLocation, filterSearch, filterStatus, filterDate, bookingsPage, bookingsLimit]);
+  }, [token, filterLocation, filterSearch, filterBookingStatus, filterDate, bookingsPage, bookingsLimit]);
 
   useEffect(() => {
     if (token) {
       fetchCanteenData();
     }
-  }, [token, filterLocation, filterSearch, filterStatus, filterPaymentStatus, filterDate, ordersPage, ordersLimit]);
+  }, [token, filterLocation, filterSearch, filterOrderStatus, filterPaymentStatus, filterDate, ordersPage, ordersLimit]);
+
+  const handleResetFilters = () => {
+    setFilterLocation('all');
+    setSearchVal('');
+    setFilterSearch('');
+    setFilterBookingStatus('all');
+    setFilterOrderStatus('all');
+    setFilterPaymentStatus('all');
+    setFilterDate('');
+    setBookingsPage(1);
+    setOrdersPage(1);
+  };
 
   const openFoodItemForm = (item = null) => {
     setFoodItemForm(item || {});
@@ -640,31 +653,40 @@ export const AdminDashboard = () => {
                 </div>
 
                 {/* Status Filter */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Status</label>
-                  <select
-                    className="form-input"
-                    value={filterStatus}
-                    onChange={e => { setFilterStatus(e.target.value); setBookingsPage(1); setOrdersPage(1); }}
-                    style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
-                  >
-                    <option value="all">All Statuses</option>
-                    {activeTab === 'bookings' ? (
-                      <>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="cancelled">Cancelled</option>
-                      </>
-                    ) : activeTab === 'food-orders' ? (
-                      <>
-                        <option value="pending">Order Placed</option>
-                        <option value="preparing">Preparing</option>
-                        <option value="ready">Ready</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="cancelled">Cancelled</option>
-                      </>
-                    ) : null}
-                  </select>
-                </div>
+                {activeTab === 'bookings' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Booking Status</label>
+                    <select
+                      className="form-input"
+                      value={filterBookingStatus}
+                      onChange={e => { setFilterBookingStatus(e.target.value); setBookingsPage(1); }}
+                      style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                )}
+
+                {activeTab === 'food-orders' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Order Status</label>
+                    <select
+                      className="form-input"
+                      value={filterOrderStatus}
+                      onChange={e => { setFilterOrderStatus(e.target.value); setOrdersPage(1); }}
+                      style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="pending">Order Placed</option>
+                      <option value="preparing">Preparing</option>
+                      <option value="ready">Ready</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Payment Status Filter (Visible for Canteen tab) */}
                 {activeTab === 'food-orders' && (
