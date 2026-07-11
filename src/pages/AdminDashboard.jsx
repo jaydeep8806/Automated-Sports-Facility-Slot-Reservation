@@ -429,71 +429,60 @@ export const AdminDashboard = () => {
     <div className="container animate-fade-in" style={{ marginTop: '20px' }}>
       
       {/* Header */}
-      <div className="page-header">
+      <div className="admin-page-header">
         <div>
-          <h1 className="page-title">Admin Dashboard</h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: '4px' }}>Control panels for facilities catalog and player reservations.</p>
+          <h1>Admin Dashboard</h1>
+          <p style={{ color: 'var(--text-muted)', marginTop: '4px', fontSize: '0.9rem' }}>Control panel for facilities, bookings and canteen orders.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
-            className="btn btn-primary" 
-            onClick={triggerAddForm}
-            style={{ padding: '10px 18px', fontSize: '0.85rem' }}
-          >
-            <Plus size={16} />
-            Add New Facility
-          </button>
-        </div>
+        <button 
+          className="btn btn-primary" 
+          onClick={triggerAddForm}
+          style={{ padding: '10px 18px', fontSize: '0.85rem', flexShrink: 0 }}
+        >
+          <Plus size={16} />
+          Add Facility
+        </button>
       </div>
 
       {/* Metrics Row */}
-      <section style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '20px',
-        marginBottom: '40px'
-      }}>
-        {/* S1: Facilities count */}
-        <div className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--primary)', borderRadius: 'var(--radius-md)' }}>
-            <Building2 size={24} />
+      <div className="admin-stats-grid">
+        <div className="glass-card admin-stat-card">
+          <div className="stat-icon" style={{ padding: '11px', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--primary)', borderRadius: 'var(--radius-md)', flexShrink: 0 }}>
+            <Building2 size={22} />
           </div>
           <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Facilities</span>
-            <p style={{ fontSize: '1.75rem', fontWeight: 800 }}>{stats.totalFacilities}</p>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Facilities</span>
+            <p className="stat-value" style={{ fontSize: '1.65rem', fontWeight: 800, lineHeight: 1.1 }}>{stats.totalFacilities}</p>
           </div>
         </div>
-        {/* S2: Bookings count */}
-        <div className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--secondary)', borderRadius: 'var(--radius-md)' }}>
-            <CalendarDays size={24} />
+        <div className="glass-card admin-stat-card">
+          <div className="stat-icon" style={{ padding: '11px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--secondary)', borderRadius: 'var(--radius-md)', flexShrink: 0 }}>
+            <CalendarDays size={22} />
           </div>
           <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Bookings</span>
-            <p style={{ fontSize: '1.75rem', fontWeight: 800 }}>{stats.totalBookings}</p>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Bookings</span>
+            <p className="stat-value" style={{ fontSize: '1.65rem', fontWeight: 800, lineHeight: 1.1 }}>{stats.totalBookings}</p>
           </div>
         </div>
-        {/* S3: Total Revenue */}
-        <div className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--primary)', borderRadius: 'var(--radius-md)' }}>
-            <DollarSign size={24} />
+        <div className="glass-card admin-stat-card">
+          <div className="stat-icon" style={{ padding: '11px', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--primary)', borderRadius: 'var(--radius-md)', flexShrink: 0 }}>
+            <DollarSign size={22} />
           </div>
           <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Revenue</span>
-            <p style={{ fontSize: '1.75rem', fontWeight: 800 }}>₹{stats.totalRevenue.toFixed(0)}</p>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Revenue</span>
+            <p className="stat-value" style={{ fontSize: '1.65rem', fontWeight: 800, lineHeight: 1.1 }}>₹{stats.totalRevenue.toFixed(0)}</p>
           </div>
         </div>
-        {/* S4: Customers count */}
-        <div className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--secondary)', borderRadius: 'var(--radius-md)' }}>
-            <Users size={24} />
+        <div className="glass-card admin-stat-card">
+          <div className="stat-icon" style={{ padding: '11px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--secondary)', borderRadius: 'var(--radius-md)', flexShrink: 0 }}>
+            <Users size={22} />
           </div>
           <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Players</span>
-            <p style={{ fontSize: '1.75rem', fontWeight: 800 }}>{stats.activeUsers}</p>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Players</span>
+            <p className="stat-value" style={{ fontSize: '1.65rem', fontWeight: 800, lineHeight: 1.1 }}>{stats.activeUsers}</p>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Main Layout Block */}
       <div style={{
@@ -614,222 +603,205 @@ export const AdminDashboard = () => {
         ) : (
           <div>
             {/* Global Filters Panel */}
-            <div className="glass-card animate-fade-in" style={{ padding: '20px', marginBottom: '24px', border: '1px solid var(--card-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                <Settings size={16} style={{ color: 'var(--primary)' }} />
-                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>Admin Dashboard Filters</span>
-              </div>
-              <div className="admin-filters-grid">
-                {/* Search */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Global Search</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Search ID, User, Venue..."
-                    value={searchVal}
-                    onChange={e => setSearchVal(e.target.value)}
-                    style={{ fontSize: '0.85rem', padding: '10px' }}
-                  />
-                </div>
-
-                {/* Location Filter */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>City/Location</label>
-                  <select
-                    className="form-input"
-                    value={filterLocation}
-                    onChange={e => { setFilterLocation(e.target.value); setBookingsPage(1); setOrdersPage(1); }}
-                    style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
-                  >
-                    <option value="all">All Cities</option>
-                    <option value="Ahmedabad">Ahmedabad</option>
-                    <option value="Rajkot">Rajkot</option>
-                    <option value="Surat">Surat</option>
-                    <option value="Vadodara">Vadodara</option>
-                    <option value="Jamnagar">Jamnagar</option>
-                    <option value="Bhavnagar">Bhavnagar</option>
-                  </select>
-                </div>
-
-                {/* Status Filter */}
-                {activeTab === 'bookings' && (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Booking Status</label>
-                    <select
-                      className="form-input"
-                      value={filterBookingStatus}
-                      onChange={e => { setFilterBookingStatus(e.target.value); setBookingsPage(1); }}
-                      style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
-                    >
-                      <option value="all">All Statuses</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
+            {(() => {
+              const activeFilterCount = [
+                filterLocation !== 'all',
+                filterSearch !== '',
+                filterBookingStatus !== 'all',
+                filterOrderStatus !== 'all',
+                filterPaymentStatus !== 'all',
+                filterDate !== ''
+              ].filter(Boolean).length;
+              return (
+                <div className="glass-card animate-fade-in" style={{ padding: '18px 20px', marginBottom: '20px', border: '1px solid var(--card-border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Settings size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)' }}>Filters</span>
+                      {activeFilterCount > 0 && (
+                        <span className="admin-filter-active-badge">{activeFilterCount} active</span>
+                      )}
+                    </div>
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px' }}
+                      >
+                        <X size={12} /> Clear all
+                      </button>
+                    )}
                   </div>
-                )}
+                  <div className="admin-filters-grid">
+                    {/* Search */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Search</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Name, ID, email, venue..."
+                        value={searchVal}
+                        onChange={e => setSearchVal(e.target.value)}
+                        style={{ fontSize: '0.85rem', padding: '9px 12px' }}
+                      />
+                    </div>
 
-                {activeTab === 'food-orders' && (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Order Status</label>
-                    <select
-                      className="form-input"
-                      value={filterOrderStatus}
-                      onChange={e => { setFilterOrderStatus(e.target.value); setOrdersPage(1); }}
-                      style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
-                    >
-                      <option value="all">All Statuses</option>
-                      <option value="pending">Order Placed</option>
-                      <option value="preparing">Preparing</option>
-                      <option value="ready">Ready</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
+                    {/* Location Filter */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>City</label>
+                      <select
+                        className="form-input"
+                        value={filterLocation}
+                        onChange={e => { setFilterLocation(e.target.value); setBookingsPage(1); setOrdersPage(1); }}
+                        style={{ fontSize: '0.85rem', padding: '9px 12px', background: 'var(--bg-surface)' }}
+                      >
+                        <option value="all">All Cities</option>
+                        <option value="Ahmedabad">Ahmedabad</option>
+                        <option value="Rajkot">Rajkot</option>
+                        <option value="Surat">Surat</option>
+                        <option value="Vadodara">Vadodara</option>
+                        <option value="Jamnagar">Jamnagar</option>
+                        <option value="Bhavnagar">Bhavnagar</option>
+                      </select>
+                    </div>
+
+                    {/* Status Filter — conditional on active tab */}
+                    {activeTab === 'bookings' ? (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</label>
+                        <select
+                          className="form-input"
+                          value={filterBookingStatus}
+                          onChange={e => { setFilterBookingStatus(e.target.value); setBookingsPage(1); }}
+                          style={{ fontSize: '0.85rem', padding: '9px 12px', background: 'var(--bg-surface)' }}
+                        >
+                          <option value="all">All Statuses</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      </div>
+                    ) : activeTab === 'food-orders' ? (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Order Status</label>
+                        <select
+                          className="form-input"
+                          value={filterOrderStatus}
+                          onChange={e => { setFilterOrderStatus(e.target.value); setOrdersPage(1); }}
+                          style={{ fontSize: '0.85rem', padding: '9px 12px', background: 'var(--bg-surface)' }}
+                        >
+                          <option value="all">All Statuses</option>
+                          <option value="pending">Placed</option>
+                          <option value="preparing">Preparing</option>
+                          <option value="ready">Ready</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      </div>
+                    ) : <div />}
+
+                    {/* Payment Status — food orders only */}
+                    {activeTab === 'food-orders' ? (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Payment</label>
+                        <select
+                          className="form-input"
+                          value={filterPaymentStatus}
+                          onChange={e => { setFilterPaymentStatus(e.target.value); setOrdersPage(1); }}
+                          style={{ fontSize: '0.85rem', padding: '9px 12px', background: 'var(--bg-surface)' }}
+                        >
+                          <option value="all">All</option>
+                          <option value="pending">Pending</option>
+                          <option value="paid">Paid</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Date</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={filterDate}
+                          onChange={e => { setFilterDate(e.target.value); setBookingsPage(1); setOrdersPage(1); }}
+                          style={{ fontSize: '0.85rem', padding: '8px 12px' }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Reset Button */}
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                      {activeTab === 'food-orders' && (
+                        <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Date</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            value={filterDate}
+                            onChange={e => { setFilterDate(e.target.value); setBookingsPage(1); setOrdersPage(1); }}
+                            style={{ fontSize: '0.85rem', padding: '8px 12px' }}
+                          />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleResetFilters}
+                        title="Reset all filters"
+                        style={{ padding: '9px 14px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', flexShrink: 0 }}
+                      >
+                        <X size={13} /> Reset
+                      </button>
+                    </div>
                   </div>
-                )}
-
-                {/* Payment Status Filter (Visible for Canteen tab) */}
-                {activeTab === 'food-orders' && (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Payment Status</label>
-                    <select
-                      className="form-input"
-                      value={filterPaymentStatus}
-                      onChange={e => { setFilterPaymentStatus(e.target.value); setOrdersPage(1); }}
-                      style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
-                    >
-                      <option value="all">All Payments</option>
-                      <option value="pending">Pending</option>
-                      <option value="paid">Paid</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* Date Filter */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Filter Date</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={filterDate}
-                    onChange={e => { setFilterDate(e.target.value); setBookingsPage(1); setOrdersPage(1); }}
-                    style={{ fontSize: '0.85rem', padding: '9px 10px' }}
-                  />
                 </div>
-
-                {/* Reset Button */}
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={handleResetFilters}
-                  style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem', height: '40px' }}
-                >
-                  <X size={14} /> Reset
-                </button>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Navigation Tabs */}
             <div className="admin-tabs-scroll">
-              <button 
-                onClick={() => setActiveTab('facilities')}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: activeTab === 'facilities' ? 'var(--primary)' : 'var(--text-muted)',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '8px 16px',
-                  borderBottom: activeTab === 'facilities' ? '2px solid var(--primary)' : 'none',
-                  transition: 'var(--transition-smooth)'
-                }}
-              >
-                Manage Facilities ({facilities.length})
+              <button className={`admin-tab-btn${activeTab === 'facilities' ? ' active' : ''}`} onClick={() => setActiveTab('facilities')}>
+                🏟️ Facilities
+                <span className="admin-tab-badge">{facilities.length}</span>
               </button>
-              <button 
-                onClick={() => setActiveTab('bookings')}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: activeTab === 'bookings' ? 'var(--primary)' : 'var(--text-muted)',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '8px 16px',
-                  borderBottom: activeTab === 'bookings' ? '2px solid var(--primary)' : 'none',
-                  transition: 'var(--transition-smooth)'
-                }}
-              >
-                Manage Bookings ({stats.totalBookings})
+              <button className={`admin-tab-btn${activeTab === 'bookings' ? ' active' : ''}`} onClick={() => setActiveTab('bookings')}>
+                📅 Bookings
+                <span className="admin-tab-badge">{stats.totalBookings}</span>
               </button>
-              <button 
-                onClick={() => setActiveTab('canteen')}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: activeTab === 'canteen' ? 'var(--primary)' : 'var(--text-muted)',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '8px 16px',
-                  borderBottom: activeTab === 'canteen' ? '2px solid var(--primary)' : 'none',
-                  transition: 'var(--transition-smooth)'
-                }}
-              >
-                🍔 Canteen Menu ({foodItems.length})
+              <button className={`admin-tab-btn${activeTab === 'canteen' ? ' active' : ''}`} onClick={() => setActiveTab('canteen')}>
+                🍔 Menu
+                <span className="admin-tab-badge">{foodItems.length}</span>
               </button>
-              <button 
-                onClick={() => setActiveTab('food-orders')}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: activeTab === 'food-orders' ? 'var(--primary)' : 'var(--text-muted)',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '8px 16px',
-                  borderBottom: activeTab === 'food-orders' ? '2px solid var(--primary)' : 'none',
-                  transition: 'var(--transition-smooth)'
-                }}
-              >
-                📋 Food Orders
+              <button className={`admin-tab-btn${activeTab === 'food-orders' ? ' active' : ''}`} onClick={() => setActiveTab('food-orders')}>
+                📋 Orders
+                <span className="admin-tab-badge">{foodOrders.length}</span>
               </button>
             </div>
 
             {/* TAB 1: Facilities List */}
             {activeTab === 'facilities' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {facilities.map((f) => (
-                  <div key={f.id} className="glass-card" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', border: '1px solid var(--card-border)' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>{f.name}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {facilities.length === 0 ? (
+                  <div className="glass-card admin-empty-state">
+                    <Building2 size={40} />
+                    <p>No facilities found. Click "Add Facility" to create one.</p>
+                  </div>
+                ) : facilities.map((f) => (
+                  <div key={f.id} className="glass-card facility-card" style={{ padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '14px', border: '1px solid var(--card-border)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{f.name}</h3>
                         <span className={`badge ${f.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
                           {f.status}
                         </span>
                       </div>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
-                        📍 {f.location} | 🏷️ {f.type.replace('_', ' ')}
-                      </p>
-                      <p style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 700, marginTop: '4px' }}>
-                        ₹{f.price_per_hour}/hr (Slot: {f.slot_duration}m)
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '3px' }}>
+                        📍 {f.location} &nbsp;·&nbsp; 🏷️ {f.type.replace('_', ' ')} &nbsp;·&nbsp; ₹{f.price_per_hour}/hr
                       </p>
                     </div>
-
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button 
-                        className="btn btn-secondary" 
-                        onClick={() => triggerEditForm(f)}
-                        style={{ padding: '8px 12px', fontSize: '0.8rem' }}
-                      >
+                    <div className="facility-card-actions">
+                      <button className="btn btn-secondary" onClick={() => triggerEditForm(f)} style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
                         <Edit size={14} />
                       </button>
-                      <button 
-                        className="btn btn-danger" 
-                        onClick={() => triggerDeleteConfirm(f)}
-                        style={{ padding: '8px 12px', fontSize: '0.8rem' }}
-                      >
+                      <button className="btn btn-danger" onClick={() => triggerDeleteConfirm(f)} style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -841,78 +813,62 @@ export const AdminDashboard = () => {
             {/* TAB 2: Bookings List */}
             {activeTab === 'bookings' && (
               <div className="glass-card" style={{ overflowX: 'auto', border: '1px solid var(--card-border)', padding: '16px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      <th style={{ padding: '12px' }}>ID</th>
-                      <th style={{ padding: '12px' }}>Player Details</th>
-                      <th style={{ padding: '12px' }}>Facility</th>
-                      <th style={{ padding: '12px' }}>Date</th>
-                      <th style={{ padding: '12px' }}>Time Slot</th>
-                      <th style={{ padding: '12px' }}>Price</th>
-                      <th style={{ padding: '12px' }}>Status</th>
-                      <th style={{ padding: '12px' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody style={{ fontSize: '0.9rem' }}>
-                    {bookings.map((b) => {
-                      const bDate = new Date(b.date);
-                      const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
-                      return (
-                        <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                          <td style={{ padding: '12px', fontWeight: 600 }}>#{b.id}</td>
-                          <td style={{ padding: '12px' }}>
-                            <div>{b.user_name}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-dark)' }}>{b.user_email}</div>
-                          </td>
-                          <td style={{ padding: '12px', fontWeight: 500 }}>{b.facility_name}</td>
-                          <td style={{ padding: '12px' }}>{bDateStr}</td>
-                          <td style={{ padding: '12px', color: 'var(--primary)', fontWeight: 600 }}>{b.start_time.slice(0, 5)} - {b.end_time.slice(0, 5)}</td>
-                          <td style={{ padding: '12px', fontWeight: 600 }}>₹{parseFloat(b.total_price).toFixed(0)}</td>
-                          <td style={{ padding: '12px' }}>
-                            <span className={`badge ${b.status === 'confirmed' ? 'badge-success' : 'badge-danger'}`}>
-                              {b.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px' }}>
-                            {b.status === 'confirmed' && (
-                              <button 
-                                onClick={() => triggerCancelConfirm(b)}
-                                className="btn btn-danger"
-                                style={{ padding: '6px 10px', fontSize: '0.75rem' }}
-                              >
-                                Cancel
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                {/* Pagination Controls */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Showing Page {bookingsPage} of {bookingsTotalPages}
-                  </span>
+                {bookings.length === 0 ? (
+                  <div className="admin-empty-state">
+                    <CalendarDays size={40} />
+                    <p>No bookings match your current filters. Try adjusting the search, location, or date.</p>
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '720px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <th style={{ padding: '10px 12px' }}>ID</th>
+                        <th style={{ padding: '10px 12px' }}>Player</th>
+                        <th style={{ padding: '10px 12px' }}>Facility / City</th>
+                        <th style={{ padding: '10px 12px' }}>Date</th>
+                        <th style={{ padding: '10px 12px' }}>Slot</th>
+                        <th style={{ padding: '10px 12px' }}>Price</th>
+                        <th style={{ padding: '10px 12px' }}>Status</th>
+                        <th style={{ padding: '10px 12px' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ fontSize: '0.88rem' }}>
+                      {bookings.map((b) => {
+                        const bDate = new Date(b.date);
+                        const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+                        return (
+                          <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                            <td style={{ padding: '11px 12px', fontWeight: 700, color: 'var(--text-muted)' }}>#{b.id}</td>
+                            <td style={{ padding: '11px 12px' }}>
+                              <div style={{ fontWeight: 600 }}>{b.user_name}</div>
+                              <div style={{ fontSize: '0.73rem', color: 'var(--text-dark)' }}>{b.user_email}</div>
+                            </td>
+                            <td style={{ padding: '11px 12px' }}>
+                              <div style={{ fontWeight: 600 }}>{b.facility_name}</div>
+                              {b.facility_location && <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>📍 {b.facility_location}</div>}
+                            </td>
+                            <td style={{ padding: '11px 12px' }}>{bDateStr}</td>
+                            <td style={{ padding: '11px 12px', color: 'var(--primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{b.start_time.slice(0, 5)} – {b.end_time.slice(0, 5)}</td>
+                            <td style={{ padding: '11px 12px', fontWeight: 700 }}>₹{parseFloat(b.total_price).toFixed(0)}</td>
+                            <td style={{ padding: '11px 12px' }}>
+                              <span className={`badge ${b.status === 'confirmed' ? 'badge-success' : 'badge-danger'}`}>{b.status}</span>
+                            </td>
+                            <td style={{ padding: '11px 12px' }}>
+                              {b.status === 'confirmed' && (
+                                <button onClick={() => triggerCancelConfirm(b)} className="btn btn-danger" style={{ padding: '5px 10px', fontSize: '0.73rem' }}>Cancel</button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+                <div className="admin-pagination">
+                  <span>Page {bookingsPage} of {bookingsTotalPages} &nbsp;·&nbsp; {bookings.length} results shown</span>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={bookingsPage <= 1}
-                      onClick={() => setBookingsPage(prev => Math.max(prev - 1, 1))}
-                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={bookingsPage >= bookingsTotalPages}
-                      onClick={() => setBookingsPage(prev => Math.min(prev + 1, bookingsTotalPages))}
-                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                    >
-                      Next
-                    </button>
+                    <button className="btn btn-secondary" disabled={bookingsPage <= 1} onClick={() => setBookingsPage(prev => Math.max(prev - 1, 1))} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>← Prev</button>
+                    <button className="btn btn-secondary" disabled={bookingsPage >= bookingsTotalPages} onClick={() => setBookingsPage(prev => Math.min(prev + 1, bookingsTotalPages))} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>Next →</button>
                   </div>
                 </div>
               </div>
@@ -1125,28 +1081,11 @@ export const AdminDashboard = () => {
                   </table>
                 </div>
 
-                {/* Pagination Controls */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Showing Page {ordersPage} of {ordersTotalPages}
-                  </span>
+                <div className="admin-pagination">
+                  <span>Page {ordersPage} of {ordersTotalPages} &nbsp;·&nbsp; {foodOrders.length} results shown</span>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={ordersPage <= 1}
-                      onClick={() => setOrdersPage(prev => Math.max(prev - 1, 1))}
-                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={ordersPage >= ordersTotalPages}
-                      onClick={() => setOrdersPage(prev => Math.min(prev + 1, ordersTotalPages))}
-                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                    >
-                      Next
-                    </button>
+                    <button className="btn btn-secondary" disabled={ordersPage <= 1} onClick={() => setOrdersPage(prev => Math.max(prev - 1, 1))} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>← Prev</button>
+                    <button className="btn btn-secondary" disabled={ordersPage >= ordersTotalPages} onClick={() => setOrdersPage(prev => Math.min(prev + 1, ordersTotalPages))} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>Next →</button>
                   </div>
                 </div>
               </div>
@@ -1196,17 +1135,6 @@ export const AdminDashboard = () => {
         </div>
       </Modal>
 
-      <style>{`
-        .admin-form {
-          grid-template-columns: 1fr;
-        }
-        @media (min-width: 768px) {
-          .admin-form {
-            grid-template-columns: 1fr 1fr !important;
-          }
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 };
