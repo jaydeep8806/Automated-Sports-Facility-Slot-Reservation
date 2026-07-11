@@ -214,9 +214,29 @@ router.put('/:id/cancel', auth, async (req, res) => {
       [id]
     );
 
+    // Cancel associated food orders if they are still in 'pending' status
+    const foodOrdersRes = await query(
+      'SELECT id, order_status FROM food_orders WHERE booking_id = $1',
+      [id]
+    );
+
+    let cancelledFoodOrdersCount = 0;
+    let keptActiveFoodOrdersCount = 0;
+
+    for (const order of foodOrdersRes.rows) {
+      if (order.order_status === 'pending') {
+        await query("UPDATE food_orders SET order_status = 'cancelled' WHERE id = $1", [order.id]);
+        cancelledFoodOrdersCount++;
+      } else if (order.order_status !== 'cancelled') {
+        keptActiveFoodOrdersCount++;
+      }
+    }
+
     res.json({
       message: 'Booking cancelled successfully.',
-      booking: updateRes.rows[0]
+      booking: updateRes.rows[0],
+      foodOrdersCancelled: cancelledFoodOrdersCount,
+      foodOrdersKeptActive: keptActiveFoodOrdersCount
     });
   } catch (err) {
     console.error('Cancel booking error:', err);

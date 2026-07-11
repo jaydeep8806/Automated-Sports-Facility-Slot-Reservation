@@ -737,14 +737,18 @@ export const Profile = () => {
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Paid</span>
                             <p style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary)', margin: 0 }}>₹{parseFloat(order.total_price).toFixed(2)}</p>
                           </div>
-                          {order.order_status === 'pending' && (
+                          {order.order_status === 'pending' ? (
                             <button
                               onClick={() => triggerCancelFoodOrder(order)}
                               style={{ padding: '7px 16px', borderRadius: '8px', border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
                             >
                               Cancel Order
                             </button>
-                          )}
+                          ) : ['preparing', 'ready', 'delivered'].includes(order.order_status) ? (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', maxWidth: '60%', textAlign: 'right', lineHeight: '1.3' }}>
+                              Cancellation is no longer available because food preparation has already started.
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -772,9 +776,17 @@ export const Profile = () => {
           <p style={{ fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>
             Booking at <strong>{bookingToCancel?.facility_name}</strong> on <strong>{bookingToCancel?.bDateStr}</strong> ({bookingToCancel?.start_time.slice(0, 5)} - {bookingToCancel?.end_time.slice(0, 5)})
           </p>
-          <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', color: 'var(--danger)' }}>
+          <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', color: 'var(--danger)', lineHeight: '1.4' }}>
             ⚠️ This action cannot be undone. The reserved slot will immediately become open to bookings by other players.
           </div>
+
+          {bookingToCancel && foodOrders.some(
+            order => order.booking_id === bookingToCancel.id && order.order_status !== 'cancelled'
+          ) && (
+            <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', color: '#f59e0b', lineHeight: '1.4' }}>
+              <strong>Note:</strong> This booking has an associated food order. If you continue, the food order will also be cancelled (only if cancellation is still allowed).
+            </div>
+          )}
 
           {cancelError && (
             <div className="badge-danger" style={{ display: 'flex', gap: '6px', padding: '10px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem' }}>

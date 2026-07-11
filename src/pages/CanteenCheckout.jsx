@@ -23,6 +23,7 @@ export const CanteenCheckout = () => {
   const [upiId, setUpiId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [acknowledged, setAcknowledged] = useState(false);
 
   if (cart.length === 0) {
     return (
@@ -209,10 +210,44 @@ export const CanteenCheckout = () => {
               </div>
             </div>
 
+            {/* Important Cancellation Notice */}
+            <div style={{
+              background: 'rgba(245, 158, 11, 0.08)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: 'var(--radius-md)',
+              padding: '16px',
+              marginBottom: '16px',
+              fontSize: '0.8rem',
+              lineHeight: '1.5',
+              textAlign: 'left'
+            }}>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f59e0b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <AlertCircle size={14} /> Important Notice
+              </h3>
+              <ul style={{ paddingLeft: '16px', margin: 0, color: 'var(--text-muted)' }}>
+                <li>Food orders can only be cancelled while the status is <strong>Order Placed</strong>.</li>
+                <li>Once the order status changes to <strong>Preparing</strong>, cancellation will not be possible.</li>
+                <li>Please review your order carefully before confirming.</li>
+              </ul>
+            </div>
+
+            {/* Acknowledgment Checkbox */}
+            <label style={{ display: 'flex', alignItems: 'start', gap: '10px', marginBottom: '20px', cursor: 'pointer', fontSize: '0.8rem', textAlign: 'left' }}>
+              <input 
+                type="checkbox" 
+                checked={acknowledged} 
+                onChange={(e) => setAcknowledged(e.target.checked)} 
+                style={{ marginTop: '3px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+              />
+              <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                I acknowledge the cancellation policy and have reviewed my order.
+              </span>
+            </label>
+
             <button
               onClick={handlePlaceOrder}
               className="btn btn-primary"
-              disabled={loading}
+              disabled={loading || !acknowledged}
               style={{ width: '100%', padding: '14px', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
               {loading ? (
