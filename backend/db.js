@@ -346,31 +346,52 @@ export const initDb = async () => {
 
       const foodItems = [
         // Healthy Snacks
-        { category: 'Healthy Snacks', name: 'Mixed Fruit Bowl', description: 'Freshly cut seasonal fruits with mint garnish', price: 90, is_veg: true, image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&q=80' },
-        { category: 'Healthy Snacks', name: 'Sprouts Salad', description: 'Protein-packed mixed sprouts with onions, tomatoes and lemon juice', price: 60, is_veg: true, image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&q=80' },
-        { category: 'Healthy Snacks', name: 'Dry Fruits Mix', description: 'Premium assortment of almonds, cashews, raisins, and walnuts', price: 120, is_veg: true, image_url: 'https://images.unsplash.com/photo-1596560548464-f03df924b711?w=400&q=80' },
-        { category: 'Healthy Snacks', name: 'Peanut Chikki', description: 'Traditional jaggery peanut brittle, instant energy boost', price: 30, is_veg: true, image_url: 'https://images.unsplash.com/photo-1548940740-204726a19be3?w=400&q=80' },
-        { category: 'Healthy Snacks', name: 'Protein Bar', description: 'Choco-almond high protein bar (20g protein)', price: 150, is_veg: true, image_url: 'https://images.unsplash.com/photo-1607349913338-fca6f7fc42d0?w=400&q=80' },
-        { category: 'Healthy Snacks', name: 'Energy Bar', description: 'Oats, honey and berry wholesome energy bar', price: 80, is_veg: true, image_url: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=400&q=80' },
-        { category: 'Healthy Snacks', name: 'Roasted Peanuts', description: 'Lightly salted oven-roasted crunchy peanuts', price: 40, is_veg: true, image_url: 'https://images.unsplash.com/photo-1569562211093-4ed0d0758f12?w=400&q=80' },
-        { category: 'Healthy Snacks', name: 'Roasted Makhana', description: 'Spiced and crispy roasted lotus seeds', price: 70, is_veg: true, image_url: 'https://images.unsplash.com/photo-1614707267537-b85acf00c4b8?w=400&q=80' },
+        { category: 'Healthy Snacks', name: 'Mixed Fruit Bowl', description: 'Freshly cut seasonal fruits with mint garnish', price: 90, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1519996529931-28324d5a630e?w=600&q=85&fit=crop' },
+        { category: 'Healthy Snacks', name: 'Sprouts Salad', description: 'Protein-packed mixed sprouts with onions, tomatoes and lemon juice', price: 60, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=600&q=85&fit=crop' },
+        { category: 'Healthy Snacks', name: 'Dry Fruits Mix', description: 'Premium assortment of almonds, cashews, raisins, and walnuts', price: 120, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=85&fit=crop' },
+        { category: 'Healthy Snacks', name: 'Peanut Chikki', description: 'Traditional jaggery peanut brittle, instant energy boost', price: 30, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&q=85&fit=crop' },
+        { category: 'Healthy Snacks', name: 'Protein Bar', description: 'Choco-almond high protein bar (20g protein)', price: 150, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1622484211761-a79a23b90978?w=600&q=85&fit=crop' },
+        { category: 'Healthy Snacks', name: 'Energy Bar', description: 'Oats, honey and berry wholesome energy bar', price: 80, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1542691457-cbe4df041eb2?w=600&q=85&fit=crop' },
+        { category: 'Healthy Snacks', name: 'Roasted Peanuts', description: 'Lightly salted oven-roasted crunchy peanuts', price: 40, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1567892320421-b67f0df36da4?w=600&q=85&fit=crop' },
+        { category: 'Healthy Snacks', name: 'Roasted Makhana', description: 'Spiced and crispy roasted lotus seeds', price: 70, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1606914501449-5a96b6ce24ca?w=600&q=85&fit=crop' },
 
         // Drinks
-        { category: 'Drinks', name: 'Mineral Water', description: 'Chilled packaged mineral water (1L)', price: 20, is_veg: true, image_url: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400&q=80' },
-        { category: 'Drinks', name: 'Coconut Water', description: '100% natural tender fresh coconut water', price: 60, is_veg: true, image_url: 'https://images.unsplash.com/photo-1525385133512-2f3bdd039054?w=400&q=80' },
-        { category: 'Drinks', name: 'Lemon Water', description: 'Refreshing home-style sweet & salted nimbu paani', price: 30, is_veg: true, image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400&q=80' },
-        { category: 'Drinks', name: 'Fresh Lime Soda', description: 'Fizzy fresh lime soda with mint leaves', price: 50, is_veg: true, image_url: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400&q=80' },
-        { category: 'Drinks', name: 'Glucose Drink', description: 'Instant orange energy glucose water', price: 40, is_veg: true, image_url: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=400&q=80' },
-        { category: 'Drinks', name: 'ORS Drink', description: 'Hydration restoring apple ORS formula', price: 50, is_veg: true, image_url: 'https://images.unsplash.com/photo-1556881286-fc6915169721?w=400&q=80' },
-        { category: 'Drinks', name: 'Sports Energy Drink', description: 'Electrolyte charged fitness drink', price: 90, is_veg: true, image_url: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400&q=80' },
-        { category: 'Drinks', name: 'Fresh Orange Juice', description: 'Cold-pressed natural orange juice', price: 100, is_veg: true, image_url: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&q=80' },
-        { category: 'Drinks', name: 'Mixed Fruit Juice', description: 'Nutritious blend of seasonal fresh fruit juices', price: 110, is_veg: true, image_url: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=400&q=80' },
+        { category: 'Drinks', name: 'Mineral Water', description: 'Chilled packaged mineral water (1L)', price: 20, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1616118132534-381148898bb4?w=600&q=85&fit=crop' },
+        { category: 'Drinks', name: 'Coconut Water', description: '100% natural tender fresh coconut water', price: 60, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=600&q=85&fit=crop' },
+        { category: 'Drinks', name: 'Lemon Water', description: 'Refreshing home-style sweet & salted nimbu paani', price: 30, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1560508180-03f285f67ded?w=600&q=85&fit=crop' },
+        { category: 'Drinks', name: 'Fresh Lime Soda', description: 'Fizzy fresh lime soda with mint leaves', price: 50, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1534353436294-0dbd4bdac845?w=600&q=85&fit=crop' },
+        { category: 'Drinks', name: 'Glucose Drink', description: 'Instant orange energy glucose water', price: 40, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=600&q=85&fit=crop' },
+        { category: 'Drinks', name: 'ORS Drink', description: 'Hydration restoring apple ORS formula', price: 50, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=600&q=85&fit=crop' },
+        { category: 'Drinks', name: 'Sports Energy Drink', description: 'Electrolyte charged fitness drink', price: 90, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=85&fit=crop&sat=-50&hue=200' },
+        { category: 'Drinks', name: 'Fresh Orange Juice', description: 'Cold-pressed natural orange juice', price: 100, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=600&q=85&fit=crop' },
+        { category: 'Drinks', name: 'Mixed Fruit Juice', description: 'Nutritious blend of seasonal fresh fruit juices', price: 110, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1622597467836-f3285f2131b8?w=600&q=85&fit=crop' },
 
         // Tea & Coffee
-        { category: 'Tea & Coffee', name: 'Masala Chai', description: 'Traditional Indian spiced milk tea', price: 25, is_veg: true, image_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80' },
-        { category: 'Tea & Coffee', name: 'Green Tea', description: 'Antioxidant-rich premium organic green tea', price: 40, is_veg: true, image_url: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400&q=80' },
-        { category: 'Tea & Coffee', name: 'Black Coffee', description: 'Freshly brewed strong dark espresso', price: 50, is_veg: true, image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&q=80' },
-        { category: 'Tea & Coffee', name: 'Hot Coffee', description: 'Creamy hot milk instant coffee', price: 45, is_veg: true, image_url: 'https://images.unsplash.com/photo-1497515114629-f71d768fd07c?w=400&q=80' }
+        { category: 'Tea & Coffee', name: 'Masala Chai', description: 'Traditional Indian spiced milk tea', price: 25, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?w=600&q=85&fit=crop' },
+        { category: 'Tea & Coffee', name: 'Green Tea', description: 'Antioxidant-rich premium organic green tea', price: 40, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&q=85&fit=crop' },
+        { category: 'Tea & Coffee', name: 'Black Coffee', description: 'Freshly brewed strong dark espresso', price: 50, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?w=600&q=85&fit=crop' },
+        { category: 'Tea & Coffee', name: 'Hot Coffee', description: 'Creamy hot milk instant coffee', price: 45, is_veg: true,
+          image_url: 'https://images.unsplash.com/photo-1497515114629-f71d768fd07c?w=600&q=85&fit=crop' }
       ];
 
       for (const item of foodItems) {
@@ -382,29 +403,29 @@ export const initDb = async () => {
       }
       console.log('Seeded new sports food items.');
     } else {
-      // Refresh image URLs for new sports items to be bulletproof
+      // Refresh image URLs with best-matched high-quality images
       const imageUpdates = [
-        { name: 'Mixed Fruit Bowl', image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&q=80' },
-        { name: 'Sprouts Salad', image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&q=80' },
-        { name: 'Dry Fruits Mix', image_url: 'https://images.unsplash.com/photo-1596560548464-f03df924b711?w=400&q=80' },
-        { name: 'Peanut Chikki', image_url: 'https://images.unsplash.com/photo-1548940740-204726a19be3?w=400&q=80' },
-        { name: 'Protein Bar', image_url: 'https://images.unsplash.com/photo-1607349913338-fca6f7fc42d0?w=400&q=80' },
-        { name: 'Energy Bar', image_url: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=400&q=80' },
-        { name: 'Roasted Peanuts', image_url: 'https://images.unsplash.com/photo-1569562211093-4ed0d0758f12?w=400&q=80' },
-        { name: 'Roasted Makhana', image_url: 'https://images.unsplash.com/photo-1614707267537-b85acf00c4b8?w=400&q=80' },
-        { name: 'Mineral Water', image_url: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400&q=80' },
-        { name: 'Coconut Water', image_url: 'https://images.unsplash.com/photo-1525385133512-2f3bdd039054?w=400&q=80' },
-        { name: 'Lemon Water', image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400&q=80' },
-        { name: 'Fresh Lime Soda', image_url: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400&q=80' },
-        { name: 'Glucose Drink', image_url: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=400&q=80' },
-        { name: 'ORS Drink', image_url: 'https://images.unsplash.com/photo-1556881286-fc6915169721?w=400&q=80' },
-        { name: 'Sports Energy Drink', image_url: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400&q=80' },
-        { name: 'Fresh Orange Juice', image_url: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&q=80' },
-        { name: 'Mixed Fruit Juice', image_url: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=400&q=80' },
-        { name: 'Masala Chai', image_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80' },
-        { name: 'Green Tea', image_url: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400&q=80' },
-        { name: 'Black Coffee', image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&q=80' },
-        { name: 'Hot Coffee', image_url: 'https://images.unsplash.com/photo-1497515114629-f71d768fd07c?w=400&q=80' }
+        { name: 'Mixed Fruit Bowl',      image_url: 'https://images.unsplash.com/photo-1519996529931-28324d5a630e?w=600&q=85&fit=crop' },
+        { name: 'Sprouts Salad',         image_url: 'https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=600&q=85&fit=crop' },
+        { name: 'Dry Fruits Mix',        image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=85&fit=crop' },
+        { name: 'Peanut Chikki',         image_url: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&q=85&fit=crop' },
+        { name: 'Protein Bar',           image_url: 'https://images.unsplash.com/photo-1622484211761-a79a23b90978?w=600&q=85&fit=crop' },
+        { name: 'Energy Bar',            image_url: 'https://images.unsplash.com/photo-1542691457-cbe4df041eb2?w=600&q=85&fit=crop' },
+        { name: 'Roasted Peanuts',       image_url: 'https://images.unsplash.com/photo-1567892320421-b67f0df36da4?w=600&q=85&fit=crop' },
+        { name: 'Roasted Makhana',       image_url: 'https://images.unsplash.com/photo-1606914501449-5a96b6ce24ca?w=600&q=85&fit=crop' },
+        { name: 'Mineral Water',         image_url: 'https://images.unsplash.com/photo-1616118132534-381148898bb4?w=600&q=85&fit=crop' },
+        { name: 'Coconut Water',         image_url: 'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=600&q=85&fit=crop' },
+        { name: 'Lemon Water',           image_url: 'https://images.unsplash.com/photo-1560508180-03f285f67ded?w=600&q=85&fit=crop' },
+        { name: 'Fresh Lime Soda',       image_url: 'https://images.unsplash.com/photo-1534353436294-0dbd4bdac845?w=600&q=85&fit=crop' },
+        { name: 'Glucose Drink',         image_url: 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=600&q=85&fit=crop' },
+        { name: 'ORS Drink',             image_url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=600&q=85&fit=crop' },
+        { name: 'Sports Energy Drink',   image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=85&fit=crop' },
+        { name: 'Fresh Orange Juice',    image_url: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=600&q=85&fit=crop' },
+        { name: 'Mixed Fruit Juice',     image_url: 'https://images.unsplash.com/photo-1622597467836-f3285f2131b8?w=600&q=85&fit=crop' },
+        { name: 'Masala Chai',           image_url: 'https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?w=600&q=85&fit=crop' },
+        { name: 'Green Tea',             image_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&q=85&fit=crop' },
+        { name: 'Black Coffee',          image_url: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?w=600&q=85&fit=crop' },
+        { name: 'Hot Coffee',            image_url: 'https://images.unsplash.com/photo-1497515114629-f71d768fd07c?w=600&q=85&fit=crop' }
       ];
       for (const u of imageUpdates) {
         await query('UPDATE food_items SET image_url = $1 WHERE name = $2', [u.image_url, u.name]);
