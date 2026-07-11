@@ -25,6 +25,56 @@ if (isConfigured) {
  * Send email helper
  */
 const sendMail = async ({ to, subject, html, text }) => {
+  if (process.env.DISABLE_EMAIL === 'true') {
+    console.log(`[Email Fallback] Email sending is disabled. Printing content here instead:`);
+    printConsoleFallback(to, subject, text);
+    return true;
+  }
+
+  // 1. Try Brevo HTTP API if configured
+  if (process.env.BREVO_API_KEY) {
+    try {
+      console.log(`[Email] Sending via Brevo API...`);
+      const response = await fetch('https://api.brevo.com/v3/smtp/emails', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': process.env.BREVO_API_KEY,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: {
+            name: 'SportSlot',
+            email: process.env.EMAIL_USER || 'tempjaydeep@gmail.com'
+          },
+          to: [
+            {
+              email: to
+            }
+          ],
+          subject: subject,
+          htmlContent: html,
+          textContent: text
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[Email] Sent successfully via Brevo API:`, data.messageId || data);
+        return true;
+      } else {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+    } catch (err) {
+      console.error(`[Email Error] Failed to send email to ${to} via Brevo API:`, err.message);
+      console.log(`[Email Fallback] Due to API errors, printing content here instead:`);
+      printConsoleFallback(to, subject, text);
+      return true; // Avoid crashing/rolling back user signup
+    }
+  }
+
+  // 2. Fallback to Gmail SMTP if configured
   if (isConfigured && transporter) {
     try {
       await transporter.sendMail({
@@ -37,13 +87,13 @@ const sendMail = async ({ to, subject, html, text }) => {
       console.log(`[Email] Sent: "${subject}" to ${to}`);
       return true;
     } catch (err) {
-      console.error(`[Email Error] Failed to send email to ${to}:`, err.message);
+      console.error(`[Email Error] Failed to send email to ${to} via SMTP:`, err.message);
       console.log(`[Email Fallback] Due to network restrictions or credentials error, printing content here instead:`);
       printConsoleFallback(to, subject, text);
       return true; // Avoid crashing/rolling back user signup
     }
   } else {
-    console.log(`[Email Fallback] SMTP not configured. Printing content here instead:`);
+    console.log(`[Email Fallback] SMTP / Brevo not configured. Printing content here instead:`);
     printConsoleFallback(to, subject, text);
     return true;
   }
