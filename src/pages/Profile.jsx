@@ -95,21 +95,23 @@ export const Profile = () => {
 
   useEffect(() => {
     fetchMyBookings();
-    fetchMyFoodOrders();
+    fetchMyFoodOrders(true);
   }, [token]);
 
   // Dynamic status updates: Poll food orders every 5 seconds when in Food tab
   useEffect(() => {
     if (activeTab !== 'food' || !token) return;
     const interval = setInterval(() => {
-      fetchMyFoodOrders();
+      fetchMyFoodOrders(false); // Poll in background without showing spinner
     }, 5000);
     return () => clearInterval(interval);
   }, [activeTab, token]);
 
   // Fetch food orders
-  const fetchMyFoodOrders = async () => {
-    setFoodOrdersLoading(true);
+  const fetchMyFoodOrders = async (showLoader = false) => {
+    if (showLoader) {
+      setFoodOrdersLoading(true);
+    }
     try {
       const res = await fetch(API_BASE_URL + '/api/canteen/my-orders', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -121,7 +123,9 @@ export const Profile = () => {
     } catch (err) {
       console.error(err);
     } finally {
-      setFoodOrdersLoading(false);
+      if (showLoader) {
+        setFoodOrdersLoading(false);
+      }
     }
   };
 
@@ -129,6 +133,9 @@ export const Profile = () => {
     setActiveTab(tab);
     setBookingMsg('');
     setFoodMsg('');
+    if (tab === 'food') {
+      fetchMyFoodOrders(true); // Show loader when manually switching to the tab
+    }
   };
 
   const triggerCancelFoodOrder = (order) => {
