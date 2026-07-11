@@ -146,15 +146,83 @@ router.get('/my-bookings', auth, async (req, res) => {
 // @access  Private/Admin
 router.get('/all', auth, admin, async (req, res) => {
   try {
-    const result = await query(
-      `SELECT b.*, f.name AS facility_name, f.location AS facility_location, u.name AS user_name, u.email AS user_email 
-       FROM bookings b
-       JOIN facilities f ON b.facility_id = f.id
-       JOIN users u ON b.user_id = u.id
-       ORDER BY b.date DESC, b.start_time DESC`
-    );
+    const { location, search, status, date, page = 1, limit = 10 } = req.query;
 
-    res.json(result.rows);
+    let queryText = `
+      SELECT b.*, f.name AS facility_name, f.location AS facility_location, u.name AS user_name, u.email AS user_email 
+      FROM bookings b
+      JOIN facilities f ON b.facility_id = f.id
+      JOIN users u ON b.user_id = u.id
+      WHERE 1=1
+    `;
+    const queryParams = [];
+
+    if (location && location !== 'all') {
+      queryParams.push(`%${location}%`);
+      queryText += ` AND f.location ILIKE $${queryParams.length}`;
+    }
+
+    if (search) {
+      queryParams.push(`%${search}%`);
+      queryText += ` AND (u.name ILIKE $${queryParams.length} OR u.email ILIKE $${queryParams.length} OR f.name ILIKE $${queryParams.length} OR CAST(b.id AS TEXT) ILIKE $${queryParams.length})`;
+    }
+
+    if (status && status !== 'all') {
+      queryParams.push(status);
+      queryText += ` AND b.status = $${queryParams.length}`;
+    }
+
+    if (date) {
+      queryParams.push(date);
+      queryText += ` AND b.date = $${queryParams.length}`;
+    }
+
+    // Get total count for pagination before appending limit and offset
+    const countRes = await query(
+      `SELECT COUNT(*) FROM (${queryText}) AS total`,
+      queryParams
+    );
+    const totalCount = parseInt(countRes.rows[0].count, 10);
+
+    queryText += ` ORDER BY b.date DESC, b.start_time DESC`;
+
+    if (limit && limit !== 'all') {
+      const parsedLimit = parseInt(limit, 10);
+      const parsedPage = parseInt(page, 10);
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      queryParams.push(parsedLimit);
+      queryText += ` LIMIT $${queryParams.length}`;
+      queryParams.push(offset);
+      queryText += ` OFFSET $${queryParams.length}`;
+    }
+
+    const result = await query(queryText, queryParams);
+
+    // Compute stats on the complete dataset (independent of pagination and active filters)
+    const statsRes = await query(
+      `SELECT 
+         COUNT(*) as total_bookings,
+         COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_price ELSE 0 END), 0) as total_revenue,
+         COUNT(DISTINCT user_id) as active_users
+       FROM bookings`
+    );
+    const globalStats = statsRes.rows[0];
+
+    res.json({
+      data: result.rows,
+      pagination: {
+        total: totalCount,
+        page: parseInt(page, 10),
+        limit: limit === 'all' ? totalCount : parseInt(limit, 10),
+        pages: limit === 'all' ? 1 : Math.ceil(totalCount / parseInt(limit, 10))
+      },
+      stats: {
+        totalBookings: parseInt(globalStats.total_bookings, 10),
+        totalRevenue: parseFloat(globalStats.total_revenue),
+        activeUsers: parseInt(globalStats.active_users, 10)
+      }
+    });
   } catch (err) {
     console.error('Fetch all bookings error:', err);
     res.status(500).json({ message: 'Server error fetching bookings list.' });

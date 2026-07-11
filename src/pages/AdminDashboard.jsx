@@ -28,6 +28,33 @@ export const AdminDashboard = () => {
   // UI Management tabs
   const [activeTab, setActiveTab] = useState('facilities'); // 'facilities' or 'bookings'
   
+  // Filtering States
+  const [filterLocation, setFilterLocation] = useState('all');
+  const [searchVal, setSearchVal] = useState('');
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
+  const [filterDate, setFilterDate] = useState('');
+
+  // Pagination States
+  const [bookingsPage, setBookingsPage] = useState(1);
+  const [bookingsLimit] = useState(10);
+  const [bookingsTotalPages, setBookingsTotalPages] = useState(1);
+  
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersLimit] = useState(10);
+  const [ordersTotalPages, setOrdersTotalPages] = useState(1);
+
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setFilterSearch(searchVal);
+      setBookingsPage(1);
+      setOrdersPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchVal]);
+
   // Forms & Modal controls
   const [isAddMode, setIsAddMode] = useState(false);
   const [editingFacility, setEditingFacility] = useState(null);
@@ -88,24 +115,30 @@ export const AdminDashboard = () => {
       }
 
       // Fetch bookings
-      const bookRes = await fetch(API_BASE_URL + '/api/bookings/all', {
+      const bookUrl = new URL(API_BASE_URL + '/api/bookings/all');
+      bookUrl.searchParams.append('location', filterLocation);
+      bookUrl.searchParams.append('search', filterSearch);
+      bookUrl.searchParams.append('status', filterStatus);
+      bookUrl.searchParams.append('date', filterDate);
+      bookUrl.searchParams.append('page', bookingsPage);
+      bookUrl.searchParams.append('limit', bookingsLimit);
+
+      const bookRes = await fetch(bookUrl.toString(), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      let bookData = [];
+      let bookData = { data: [], pagination: { pages: 1 } };
       if (bookRes.ok) {
         bookData = await bookRes.json();
-        setBookings(bookData);
+        setBookings(bookData.data || []);
+        setBookingsTotalPages(bookData.pagination?.pages || 1);
       }
 
-      // Compute Stats
-      const totalRev = bookData.reduce((sum, b) => b.status === 'confirmed' ? sum + parseFloat(b.total_price) : sum, 0);
-      const uniqueUsers = new Set(bookData.map(b => b.user_id)).size;
-
+      // Compute Stats using backend-provided aggregate stats
       setStats({
         totalFacilities: facData.length,
-        totalBookings: bookData.length,
-        totalRevenue: totalRev,
-        activeUsers: uniqueUsers
+        totalBookings: bookData.stats?.totalBookings || 0,
+        totalRevenue: bookData.stats?.totalRevenue || 0,
+        activeUsers: bookData.stats?.activeUsers || 0
       });
 
     } catch (err) {
@@ -116,25 +149,45 @@ export const AdminDashboard = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-    fetchCanteenData();
-  }, [token]);
-
   const fetchCanteenData = async () => {
     setCanteenLoading(true);
     try {
+      const ordersUrl = new URL(API_BASE_URL + '/api/canteen/orders/all');
+      ordersUrl.searchParams.append('location', filterLocation);
+      ordersUrl.searchParams.append('search', filterSearch);
+      ordersUrl.searchParams.append('orderStatus', filterStatus);
+      ordersUrl.searchParams.append('paymentStatus', filterPaymentStatus);
+      ordersUrl.searchParams.append('date', filterDate);
+      ordersUrl.searchParams.append('page', ordersPage);
+      ordersUrl.searchParams.append('limit', ordersLimit);
+
       const [itemsRes, ordersRes, catsRes] = await Promise.all([
         fetch(API_BASE_URL + '/api/canteen/admin/items', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(API_BASE_URL + '/api/canteen/orders/all', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(ordersUrl.toString(), { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(API_BASE_URL + '/api/canteen/categories')
       ]);
       if (itemsRes.ok) setFoodItems(await itemsRes.json());
-      if (ordersRes.ok) setFoodOrders(await ordersRes.json());
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json();
+        setFoodOrders(ordersData.data || []);
+        setOrdersTotalPages(ordersData.pagination?.pages || 1);
+      }
       if (catsRes.ok) setCategories(await catsRes.json());
     } catch (err) { console.error(err); }
     finally { setCanteenLoading(false); }
   };
+
+  useEffect(() => {
+    if (token) {
+      fetchData();
+    }
+  }, [token, filterLocation, filterSearch, filterStatus, filterDate, bookingsPage, bookingsLimit]);
+
+  useEffect(() => {
+    if (token) {
+      fetchCanteenData();
+    }
+  }, [token, filterLocation, filterSearch, filterStatus, filterPaymentStatus, filterDate, ordersPage, ordersLimit]);
 
   const openFoodItemForm = (item = null) => {
     setFoodItemForm(item || {});
@@ -547,8 +600,115 @@ export const AdminDashboard = () => {
           </div>
         ) : (
           <div>
+            {/* Global Filters Panel */}
+            <div className="glass-card animate-fade-in" style={{ padding: '20px', marginBottom: '24px', border: '1px solid var(--card-border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                <Settings size={16} style={{ color: 'var(--primary)' }} />
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>Admin Dashboard Filters</span>
+              </div>
+              <div className="admin-filters-grid">
+                {/* Search */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Global Search</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Search ID, User, Venue..."
+                    value={searchVal}
+                    onChange={e => setSearchVal(e.target.value)}
+                    style={{ fontSize: '0.85rem', padding: '10px' }}
+                  />
+                </div>
+
+                {/* Location Filter */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>City/Location</label>
+                  <select
+                    className="form-input"
+                    value={filterLocation}
+                    onChange={e => { setFilterLocation(e.target.value); setBookingsPage(1); setOrdersPage(1); }}
+                    style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
+                  >
+                    <option value="all">All Cities</option>
+                    <option value="Ahmedabad">Ahmedabad</option>
+                    <option value="Rajkot">Rajkot</option>
+                    <option value="Surat">Surat</option>
+                    <option value="Vadodara">Vadodara</option>
+                    <option value="Jamnagar">Jamnagar</option>
+                    <option value="Bhavnagar">Bhavnagar</option>
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Status</label>
+                  <select
+                    className="form-input"
+                    value={filterStatus}
+                    onChange={e => { setFilterStatus(e.target.value); setBookingsPage(1); setOrdersPage(1); }}
+                    style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
+                  >
+                    <option value="all">All Statuses</option>
+                    {activeTab === 'bookings' ? (
+                      <>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </>
+                    ) : activeTab === 'food-orders' ? (
+                      <>
+                        <option value="pending">Order Placed</option>
+                        <option value="preparing">Preparing</option>
+                        <option value="ready">Ready</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </>
+                    ) : null}
+                  </select>
+                </div>
+
+                {/* Payment Status Filter (Visible for Canteen tab) */}
+                {activeTab === 'food-orders' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Payment Status</label>
+                    <select
+                      className="form-input"
+                      value={filterPaymentStatus}
+                      onChange={e => { setFilterPaymentStatus(e.target.value); setOrdersPage(1); }}
+                      style={{ fontSize: '0.85rem', padding: '10px', background: 'var(--bg-surface)' }}
+                    >
+                      <option value="all">All Payments</option>
+                      <option value="pending">Pending</option>
+                      <option value="paid">Paid</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Date Filter */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Filter Date</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={filterDate}
+                    onChange={e => { setFilterDate(e.target.value); setBookingsPage(1); setOrdersPage(1); }}
+                    style={{ fontSize: '0.85rem', padding: '9px 10px' }}
+                  />
+                </div>
+
+                {/* Reset Button */}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleResetFilters}
+                  style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem', height: '40px' }}
+                >
+                  <X size={14} /> Reset
+                </button>
+              </div>
+            </div>
+
             {/* Navigation Tabs */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--card-border)', paddingBottom: '12px' }}>
+            <div className="admin-tabs-scroll">
               <button 
                 onClick={() => setActiveTab('facilities')}
                 style={{
@@ -579,7 +739,7 @@ export const AdminDashboard = () => {
                   transition: 'var(--transition-smooth)'
                 }}
               >
-                Manage Bookings ({bookings.length})
+                Manage Bookings ({stats.totalBookings})
               </button>
               <button 
                 onClick={() => setActiveTab('canteen')}
@@ -611,7 +771,7 @@ export const AdminDashboard = () => {
                   transition: 'var(--transition-smooth)'
                 }}
               >
-                📋 Food Orders ({foodOrders.length})
+                📋 Food Orders
               </button>
             </div>
 
@@ -708,6 +868,31 @@ export const AdminDashboard = () => {
                     })}
                   </tbody>
                 </table>
+
+                {/* Pagination Controls */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Showing Page {bookingsPage} of {bookingsTotalPages}
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={bookingsPage <= 1}
+                      onClick={() => setBookingsPage(prev => Math.max(prev - 1, 1))}
+                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={bookingsPage >= bookingsTotalPages}
+                      onClick={() => setBookingsPage(prev => Math.min(prev + 1, bookingsTotalPages))}
+                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -916,6 +1101,31 @@ export const AdminDashboard = () => {
                       })}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Pagination Controls */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Showing Page {ordersPage} of {ordersTotalPages}
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={ordersPage <= 1}
+                      onClick={() => setOrdersPage(prev => Math.max(prev - 1, 1))}
+                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={ordersPage >= ordersTotalPages}
+                      onClick={() => setOrdersPage(prev => Math.min(prev + 1, ordersTotalPages))}
+                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

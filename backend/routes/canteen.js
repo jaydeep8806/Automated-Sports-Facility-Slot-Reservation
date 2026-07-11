@@ -112,14 +112,73 @@ router.get('/my-orders', auth, async (req, res) => {
 // GET /api/canteen/orders/all
 router.get('/orders/all', auth, admin, async (req, res) => {
   try {
-    const result = await query(
-      `SELECT fo.*, f.name AS facility_name, f.type AS facility_type, u.name AS user_name, u.email AS user_email
-       FROM food_orders fo
-       LEFT JOIN facilities f ON fo.facility_id = f.id
-       LEFT JOIN users u ON fo.user_id = u.id
-       ORDER BY fo.created_at DESC`
+    const { location, search, orderStatus, paymentStatus, date, page = 1, limit = 10 } = req.query;
+
+    let queryText = `
+      SELECT fo.*, f.name AS facility_name, f.location AS facility_location, f.type AS facility_type, u.name AS user_name, u.email AS user_email
+      FROM food_orders fo
+      LEFT JOIN facilities f ON fo.facility_id = f.id
+      LEFT JOIN users u ON fo.user_id = u.id
+      WHERE 1=1
+    `;
+    const queryParams = [];
+
+    if (location && location !== 'all') {
+      queryParams.push(`%${location}%`);
+      queryText += ` AND f.location ILIKE $${queryParams.length}`;
+    }
+
+    if (search) {
+      queryParams.push(`%${search}%`);
+      queryText += ` AND (u.name ILIKE $${queryParams.length} OR u.email ILIKE $${queryParams.length} OR f.name ILIKE $${queryParams.length} OR CAST(fo.id AS TEXT) ILIKE $${queryParams.length})`;
+    }
+
+    if (orderStatus && orderStatus !== 'all') {
+      queryParams.push(orderStatus);
+      queryText += ` AND fo.order_status = $${queryParams.length}`;
+    }
+
+    if (paymentStatus && paymentStatus !== 'all') {
+      queryParams.push(paymentStatus);
+      queryText += ` AND fo.payment_status = $${queryParams.length}`;
+    }
+
+    if (date) {
+      queryParams.push(date);
+      queryText += ` AND DATE(fo.created_at) = $${queryParams.length}`;
+    }
+
+    // Get total count for pagination before appending limit/offset
+    const countRes = await query(
+      `SELECT COUNT(*) FROM (${queryText}) AS total`,
+      queryParams
     );
-    res.json(result.rows);
+    const totalCount = parseInt(countRes.rows[0].count, 10);
+
+    queryText += ` ORDER BY fo.created_at DESC`;
+
+    if (limit && limit !== 'all') {
+      const parsedLimit = parseInt(limit, 10);
+      const parsedPage = parseInt(page, 10);
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      queryParams.push(parsedLimit);
+      queryText += ` LIMIT $${queryParams.length}`;
+      queryParams.push(offset);
+      queryText += ` OFFSET $${queryParams.length}`;
+    }
+
+    const result = await query(queryText, queryParams);
+
+    res.json({
+      data: result.rows,
+      pagination: {
+        total: totalCount,
+        page: parseInt(page, 10),
+        limit: limit === 'all' ? totalCount : parseInt(limit, 10),
+        pages: limit === 'all' ? 1 : Math.ceil(totalCount / parseInt(limit, 10))
+      }
+    });
   } catch (err) {
     console.error('Fetch all orders error:', err);
     res.status(500).json({ message: 'Server error fetching all food orders.' });
