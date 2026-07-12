@@ -140,8 +140,11 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
     await runProcessing(finalizePayment);
   };
 
-  /* ─── Block body scroll when modal is open ─── */
+  /* ─── Block body scroll & scroll to top when modal is open ─── */
   useEffect(() => {
+    // Scroll window to top so fixed/absolute container alignment starts from top
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
