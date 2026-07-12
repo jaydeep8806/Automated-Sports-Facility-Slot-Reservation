@@ -144,7 +144,7 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
   useEffect(() => {
     // Scroll window to top so fixed/absolute container alignment starts from top
     window.scrollTo({ top: 0, behavior: 'auto' });
-    
+
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
@@ -153,7 +153,7 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
   /* ─── Shared Styles ─── */
   const S = {
     overlay: {
-      position: 'fixed', inset: 0, zIndex: 9999,
+      position: 'fixed', inset: -70, zIndex: 9999,
       background: 'rgba(0,0,0,0.72)',
       backdropFilter: 'blur(6px)',
       WebkitBackdropFilter: 'blur(6px)',
