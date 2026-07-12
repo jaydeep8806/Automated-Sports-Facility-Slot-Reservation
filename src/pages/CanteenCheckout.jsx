@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  Clock, QrCode, ShoppingBag, ChevronLeft,
-  Utensils, Wallet, MapPin, Check, AlertCircle
+  Clock, ShoppingBag, ChevronLeft,
+  Utensils, Wallet, MapPin, Check, AlertCircle, Lock,
+  CreditCard, QrCode, Landmark
 } from 'lucide-react';
+import RazorpayModal from '../components/RazorpayModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-
 const API = API_BASE_URL + '/api/canteen';
 
 export const CanteenCheckout = () => {
@@ -19,11 +19,11 @@ export const CanteenCheckout = () => {
   const { bookingId, facilityId, facilityName, cart = [], totalPrice = 0 } = state;
 
   const [deliveryTime, setDeliveryTime] = useState('before');
-  const [paymentMethod, setPaymentMethod] = useState('canteen');
-  const [upiId, setUpiId] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'canteen'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   if (cart.length === 0) {
     return (
@@ -38,17 +38,39 @@ export const CanteenCheckout = () => {
     );
   }
 
-  const handlePlaceOrder = async () => {
-    if (paymentMethod === 'online' && !upiId.trim()) {
-      setError('Please enter your UPI ID to pay online.');
-      return;
-    }
+  /* Real API call — triggered by modal after payment simulation */
+  const placeOrderAPI = async () => {
+    const res = await fetch(`${API}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        bookingId: bookingId || null,
+        facilityId: facilityId || null,
+        items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, is_veg: i.is_veg })),
+        totalPrice,
+        deliveryTime,
+        paymentMethod: 'online'
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to place order.');
+    return data;
+  };
+
+  /* Called by RazorpayModal onSuccess */
+  const handlePaymentSuccess = async () => {
+    const data = await placeOrderAPI();
+    setShowModal(false);
+    navigate('/canteen/confirmation', {
+      state: { order: data.order, facilityName, bookingId, cart, totalPrice, deliveryTime, paymentMethod: 'online' }
+    });
+  };
+
+  /* Pay at Canteen (no payment modal) */
+  const handleCanteenPay = async () => {
+    if (!acknowledged) return;
     setLoading(true);
     setError('');
-
-    // Simulate payment verification delay
-    await new Promise(r => setTimeout(r, 1500));
-
     try {
       const res = await fetch(`${API}/orders`, {
         method: 'POST',
@@ -59,21 +81,13 @@ export const CanteenCheckout = () => {
           items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, is_veg: i.is_veg })),
           totalPrice,
           deliveryTime,
-          paymentMethod
+          paymentMethod: 'canteen'
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to place order.');
       navigate('/canteen/confirmation', {
-        state: {
-          order: data.order,
-          facilityName,
-          bookingId,
-          cart,
-          totalPrice,
-          deliveryTime,
-          paymentMethod
-        }
+        state: { order: data.order, facilityName, bookingId, cart, totalPrice, deliveryTime, paymentMethod: 'canteen' }
       });
     } catch (err) {
       setError(err.message);
@@ -89,6 +103,7 @@ export const CanteenCheckout = () => {
 
   return (
     <div className="container animate-fade-in" style={{ paddingTop: '32px', paddingBottom: '60px' }}>
+
       {/* Header */}
       <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', marginBottom: '24px', fontWeight: 600 }}>
         <ChevronLeft size={18} /> Back to Menu
@@ -99,6 +114,7 @@ export const CanteenCheckout = () => {
       <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>Review your order and choose payment.</p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '28px' }} className="checkout-canteen-layout">
+
         {/* Left: Options */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
@@ -137,10 +153,11 @@ export const CanteenCheckout = () => {
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Wallet size={18} style={{ color: 'var(--primary)' }} /> Payment Method
             </h2>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
               {[
-                { value: 'online', label: 'Pay Online', icon: <QrCode size={22} />, desc: 'UPI / QR' },
-                { value: 'canteen', label: 'Pay at Canteen', icon: <Utensils size={22} />, desc: 'Cash / Card' }
+                { value: 'online', label: 'Pay Online', icon: <Lock size={22} />, desc: 'Card · UPI · NetBanking · Wallet' },
+                { value: 'canteen', label: 'Pay at Canteen', icon: <Utensils size={22} />, desc: 'Cash / Card at counter' }
               ].map(pm => (
                 <button key={pm.value} onClick={() => setPaymentMethod(pm.value)} style={{
                   padding: '18px 12px', borderRadius: '12px', cursor: 'pointer',
@@ -157,18 +174,24 @@ export const CanteenCheckout = () => {
               ))}
             </div>
 
-            {/* Online payment QR */}
+            {/* Online: show accepted methods preview */}
             {paymentMethod === 'online' && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', marginTop: '8px' }}>
-                <div style={{ padding: '14px', background: '#fff', borderRadius: '14px', border: '3px solid rgba(99,102,241,0.5)', boxShadow: '0 0 24px rgba(99,102,241,0.2)', position: 'relative' }}>
-                  <img src="/demo_qr.png" alt="UPI QR" style={{ width: '160px', height: '160px', objectFit: 'contain', display: 'block' }} />
-                  <span style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'linear-gradient(135deg,#f59e0b,#ef4444)', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '3px 8px', borderRadius: '999px' }}>DEMO</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
+                  {[
+                    { icon: <CreditCard size={16} />, label: 'Cards' },
+                    { icon: <QrCode size={16} />, label: 'UPI' },
+                    { icon: <Landmark size={16} />, label: 'Net Banking' },
+                    { icon: <Wallet size={16} />, label: 'Wallets' },
+                  ].map(m => (
+                    <div key={m.label} style={{ padding: '10px 6px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                      <span style={{ color: 'var(--primary)' }}>{m.icon}</span>{m.label}
+                    </div>
+                  ))}
                 </div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Scan with BHIM · GPay · PhonePe · Paytm</p>
-                <div className="form-group" style={{ width: '100%' }}>
-                  <label className="form-label">Or enter UPI ID</label>
-                  <input type="text" className="form-input" placeholder="e.g. john@okaxis" value={upiId} onChange={e => setUpiId(e.target.value)} />
-                </div>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                  🔒 Secure payment popup will open after confirming your order.
+                </p>
               </div>
             )}
           </div>
@@ -210,17 +233,8 @@ export const CanteenCheckout = () => {
               </div>
             </div>
 
-            {/* Important Cancellation Notice */}
-            <div style={{
-              background: 'rgba(245, 158, 11, 0.08)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              borderRadius: 'var(--radius-md)',
-              padding: '16px',
-              marginBottom: '16px',
-              fontSize: '0.8rem',
-              lineHeight: '1.5',
-              textAlign: 'left'
-            }}>
+            {/* Cancellation Notice */}
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 'var(--radius-md)', padding: '16px', marginBottom: '16px', fontSize: '0.8rem', lineHeight: '1.5', textAlign: 'left' }}>
               <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f59e0b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <AlertCircle size={14} /> Important Notice
               </h3>
@@ -231,41 +245,59 @@ export const CanteenCheckout = () => {
               </ul>
             </div>
 
-            {/* Acknowledgment Checkbox */}
+            {/* Acknowledgment */}
             <label style={{ display: 'flex', alignItems: 'start', gap: '10px', marginBottom: '20px', cursor: 'pointer', fontSize: '0.8rem', textAlign: 'left' }}>
-              <input 
-                type="checkbox" 
-                checked={acknowledged} 
-                onChange={(e) => setAcknowledged(e.target.checked)} 
-                style={{ marginTop: '3px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-              />
+              <input type="checkbox" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)}
+                style={{ marginTop: '3px', cursor: 'pointer', accentColor: 'var(--primary)' }} />
               <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
                 I acknowledge the cancellation policy and have reviewed my order.
               </span>
             </label>
 
-            <button
-              onClick={handlePlaceOrder}
-              className="btn btn-primary"
-              disabled={loading || !acknowledged}
-              style={{ width: '100%', padding: '14px', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              {loading ? (
-                <>
-                  <div style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                  Placing Order...
-                </>
-              ) : (
-                `Confirm Order · ₹${totalPrice.toFixed(2)}`
-              )}
-            </button>
+            {/* Confirm Button */}
+            {paymentMethod === 'online' ? (
+              <button
+                onClick={() => { if (acknowledged) setShowModal(true); }}
+                className="btn btn-primary"
+                disabled={!acknowledged}
+                style={{ width: '100%', padding: '14px', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: acknowledged ? 1 : 0.5, cursor: acknowledged ? 'pointer' : 'not-allowed' }}
+              >
+                <Lock size={16} /> Pay ₹{totalPrice.toFixed(2)} Securely
+              </button>
+            ) : (
+              <button
+                onClick={handleCanteenPay}
+                className="btn btn-primary"
+                disabled={loading || !acknowledged}
+                style={{ width: '100%', padding: '14px', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                {loading ? (
+                  <>
+                    <div style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    Placing Order...
+                  </>
+                ) : (
+                  `Confirm Order · ₹${totalPrice.toFixed(2)}`
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Razorpay-style Payment Modal */}
+      {showModal && (
+        <RazorpayModal
+          totalPrice={totalPrice}
+          merchantName={`Canteen · ${facilityName}`}
+          onSuccess={handlePaymentSuccess}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+
       <style>{`
         @media (min-width: 900px) { .checkout-canteen-layout { grid-template-columns: 1.4fr 1fr !important; } }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
       `}</style>
     </div>
   );
