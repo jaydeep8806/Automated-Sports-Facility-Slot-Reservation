@@ -155,19 +155,36 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
       backdropFilter: 'blur(6px)',
       WebkitBackdropFilter: 'blur(6px)',
       display: 'flex',
+      alignItems: 'flex-start',     /* start from top so content isn't clipped */
+      justifyContent: 'center',
+      /* 80px = fixed navbar height; 16px bottom breathing room */
+      padding: '80px 16px 16px',
+      overflowY: 'auto',            /* overlay scrolls if modal taller than viewport */
+      animation: 'rzpFadeIn 0.2s ease',
+      boxSizing: 'border-box',
+    },
+    /* helper: vertically centers small modals (processing/done/failed/otp) */
+    overlayCenter: {
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.72)',
+      backdropFilter: 'blur(6px)',
+      WebkitBackdropFilter: 'blur(6px)',
+      display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px',            /* prevents edge-clipping on small screens */
-      overflowY: 'auto',          /* overlay itself scrolls if viewport is tiny */
+      padding: '80px 16px 16px',
+      overflowY: 'auto',
       animation: 'rzpFadeIn 0.2s ease',
+      boxSizing: 'border-box',
     },
     modal: {
       width: '100%', maxWidth: '820px',
       display: 'flex', borderRadius: '12px',
-      overflow: 'hidden',         /* clips rounded corners */
+      overflow: 'hidden',           /* clips rounded corners */
       boxShadow: '0 25px 80px rgba(0,0,0,0.55)',
       animation: 'rzpSlideUp 0.3s ease',
-      maxHeight: 'calc(100vh - 32px)', /* stays within viewport with padding */
+      /* (100vh - 80px top padding - 16px bottom padding) */
+      maxHeight: 'calc(100vh - 96px)',
       flexShrink: 0,
     },
     sidebar: {
@@ -214,7 +231,7 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
 
   /* ── PROCESSING ── */
   if (step === 'processing') return (
-    <div style={S.overlay}>
+    <div style={S.overlayCenter}>
       <div style={{ ...S.modal, maxWidth: '360px', borderRadius: '16px' }}>
         <div style={{ background: '#fff', padding: '48px 32px', textAlign: 'center', flex: 1 }}>
           <div style={{ width: '64px', height: '64px', margin: '0 auto 24px', position: 'relative' }}>
@@ -237,7 +254,7 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
 
   /* ── SUCCESS ── */
   if (step === 'done') return (
-    <div style={S.overlay}>
+    <div style={S.overlayCenter}>
       <div style={{ ...S.modal, maxWidth: '360px', borderRadius: '16px' }}>
         <div style={{ background: '#fff', padding: '48px 32px', textAlign: 'center', flex: 1 }}>
           <div style={{ width: '72px', height: '72px', margin: '0 auto 20px', borderRadius: '50%', background: 'rgba(16,185,129,0.1)', border: '2px solid #10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'rzpScaleIn 0.4s ease' }}>
@@ -256,7 +273,7 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
 
   /* ── FAILED ── */
   if (step === 'failed') return (
-    <div style={S.overlay}>
+    <div style={S.overlayCenter}>
       <div style={{ ...S.modal, maxWidth: '360px', borderRadius: '16px' }}>
         <div style={{ background: '#fff', padding: '48px 32px', textAlign: 'center', flex: 1 }}>
           <div style={{ width: '72px', height: '72px', margin: '0 auto 20px', borderRadius: '50%', background: '#FEF2F2', border: '2px solid #EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -277,7 +294,7 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
 
   /* ── OTP ── */
   if (step === 'otp') return (
-    <div style={S.overlay}>
+    <div style={S.overlayCenter}>
       <div style={{ ...S.modal, maxWidth: '420px', borderRadius: '16px' }}>
         <div style={{ background: '#fff', flex: 1, overflow: 'auto' }}>
           <div style={{ padding: '16px 20px', borderBottom: `1px solid ${RZP.border}`, display: 'flex', alignItems: 'center', gap: '10px' }}>
