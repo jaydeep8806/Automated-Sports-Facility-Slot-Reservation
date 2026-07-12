@@ -55,7 +55,7 @@ export const Facilities = () => {
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [type, setType] = useState(typeParam);
+  const [type, setType] = useState(typeParam || 'all');
   const [maxPrice, setMaxPrice] = useState(2000);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -172,6 +172,39 @@ export const Facilities = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Sport Filter Pills */}
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
+        {[
+          { value: 'all',         label: '🏟️ All Sports' },
+          { value: 'cricket',     label: '🏏 Cricket' },
+          { value: 'tennis',      label: '🎾 Tennis' },
+          { value: 'pickleball',  label: '🏓 Pickleball' },
+        ].map(pill => (
+          <button
+            key={pill.value}
+            onClick={() => handleTypeChange(pill.value)}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '999px',
+              border: type === pill.value
+                ? '2px solid var(--primary)'
+                : '2px solid var(--card-border)',
+              background: type === pill.value
+                ? 'rgba(99,102,241,0.1)'
+                : 'rgba(255,255,255,0.03)',
+              color: type === pill.value ? 'var(--primary)' : 'var(--text-muted)',
+              fontWeight: type === pill.value ? 700 : 500,
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              transition: 'all 0.18s ease',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {pill.label}
+          </button>
+        ))}
       </div>
 
       {/* Results count */}

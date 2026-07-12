@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   CreditCard, QrCode, Landmark, Wallet, ChevronRight, Lock,
-  X, CheckCircle, AlertCircle, Smartphone, Eye, EyeOff, ShieldCheck
+  X, CheckCircle, AlertCircle, Smartphone, Eye, EyeOff, ShieldCheck, RefreshCw
 } from 'lucide-react';
 
 /* ─── Razorpay Brand Colours ─── */
@@ -140,30 +140,52 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
     await runProcessing(finalizePayment);
   };
 
+  /* ─── Block body scroll when modal is open ─── */
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   /* ─── Shared Styles ─── */
   const S = {
     overlay: {
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.72)',
+      backdropFilter: 'blur(6px)',
+      WebkitBackdropFilter: 'blur(6px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px',            /* prevents edge-clipping on small screens */
+      overflowY: 'auto',          /* overlay itself scrolls if viewport is tiny */
       animation: 'rzpFadeIn 0.2s ease',
     },
     modal: {
       width: '100%', maxWidth: '820px',
-      display: 'flex', borderRadius: '12px', overflow: 'hidden',
-      boxShadow: '0 25px 80px rgba(0,0,0,0.5)',
-      animation: 'rzpSlideUp 0.3s ease', maxHeight: '90vh',
+      display: 'flex', borderRadius: '12px',
+      overflow: 'hidden',         /* clips rounded corners */
+      boxShadow: '0 25px 80px rgba(0,0,0,0.55)',
+      animation: 'rzpSlideUp 0.3s ease',
+      maxHeight: 'calc(100vh - 32px)', /* stays within viewport with padding */
+      flexShrink: 0,
     },
     sidebar: {
       width: '240px', minWidth: '240px',
       background: RZP.sidebar, borderRight: `1px solid ${RZP.border}`,
       display: 'flex', flexDirection: 'column',
+      overflowY: 'auto',
     },
-    sidebarHeader: { padding: '20px 16px', borderBottom: `1px solid ${RZP.border}`, background: '#fff' },
-    content: { flex: 1, background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'auto' },
+    sidebarHeader: { padding: '20px 16px', borderBottom: `1px solid ${RZP.border}`, background: '#fff', flexShrink: 0 },
+    content: {
+      flex: 1, background: '#fff', display: 'flex', flexDirection: 'column',
+      overflowY: 'auto',          /* only inner content scrolls, not the page */
+      minWidth: 0,
+    },
     contentHeader: {
       padding: '16px 24px', borderBottom: `1px solid ${RZP.border}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      background: '#fff', flexShrink: 0,
     },
     formArea: { padding: '24px', flex: 1 },
     input: {
@@ -306,11 +328,11 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
   /* ── MAIN MODAL ── */
   return (
     <div style={S.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={S.modal}>
+      <div style={S.modal} className="rzp-modal-root">
 
         {/* SIDEBAR */}
-        <div style={S.sidebar}>
-          <div style={S.sidebarHeader}>
+        <div style={S.sidebar} className="rzp-sidebar">
+          <div style={S.sidebarHeader} className="rzp-sidebar-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: RZP.blue, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Lock size={13} color="#fff" />
@@ -327,10 +349,10 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
             </div>
           </div>
 
-          <div style={{ flex: 1, paddingTop: '8px' }}>
+          <div style={{ flex: 1, paddingTop: '8px' }} className="rzp-sidebar-methods">
             <p style={{ fontSize: '10px', fontWeight: 700, color: RZP.muted, padding: '8px 16px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Payment Methods</p>
             {methods.map(m => (
-              <button key={m.id} style={S.methodBtn(activeMethod === m.id)} onClick={() => handleMethodChange(m.id)}>
+              <button key={m.id} className="rzp-method-btn" data-active={activeMethod === m.id} style={S.methodBtn(activeMethod === m.id)} onClick={() => handleMethodChange(m.id)}>
                 <span style={{ opacity: activeMethod === m.id ? 1 : 0.6 }}>{m.icon}</span>
                 {m.label}
                 {activeMethod === m.id && <ChevronRight size={14} style={{ marginLeft: 'auto' }} />}
@@ -338,7 +360,7 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
             ))}
           </div>
 
-          <div style={{ padding: '12px 16px', borderTop: `1px solid ${RZP.border}`, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="rzp-sidebar-footer" style={{ padding: '12px 16px', borderTop: `1px solid ${RZP.border}`, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Lock size={11} style={{ color: RZP.muted }} />
             <span style={{ fontSize: '10px', color: RZP.muted }}>256-bit SSL Encrypted</span>
           </div>
@@ -538,11 +560,51 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
 
       <style>{`
         @keyframes rzpFadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes rzpSlideUp { from { opacity: 0; transform: translateY(40px) scale(0.97) } to { opacity: 1; transform: translateY(0) scale(1) } }
+        @keyframes rzpSlideUp { from { opacity: 0; transform: translateY(32px) scale(0.97) } to { opacity: 1; transform: translateY(0) scale(1) } }
         @keyframes rzpSpin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
         @keyframes rzpScaleIn { from { transform: scale(0.5); opacity: 0 } to { transform: scale(1); opacity: 1 } }
         @keyframes rzpBounce { 0%, 80%, 100% { transform: scale(0) } 40% { transform: scale(1) } }
         @keyframes rzpQrPulse { 0%, 100% { box-shadow: 0 0 12px rgba(51,149,255,0.2) } 50% { box-shadow: 0 0 28px rgba(51,149,255,0.5) } }
+
+        /* ── Responsive: mobile sidebar collapses to horizontal tabs ── */
+        @media (max-width: 600px) {
+          .rzp-modal-root {
+            flex-direction: column !important;
+            max-height: calc(100vh - 32px) !important;
+          }
+          .rzp-sidebar {
+            width: 100% !important;
+            min-width: unset !important;
+            flex-direction: row !important;
+            border-right: none !important;
+            border-bottom: 1px solid #E8EEF8;
+            overflow-x: auto;
+            overflow-y: hidden !important;
+          }
+          .rzp-sidebar-header { display: none !important; }
+          .rzp-sidebar-methods {
+            display: flex !important;
+            flex-direction: row !important;
+            padding: 0 !important;
+            gap: 0;
+            flex: 1;
+          }
+          .rzp-sidebar-methods > p { display: none !important; }
+          .rzp-method-btn {
+            flex-direction: column !important;
+            gap: 4px !important;
+            padding: 10px 14px !important;
+            font-size: 11px !important;
+            border-left: none !important;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+          }
+          .rzp-method-btn[data-active="true"] {
+            border-bottom-color: #3395FF !important;
+            border-left: none !important;
+          }
+          .rzp-sidebar-footer { display: none !important; }
+        }
       `}</style>
     </div>
   );
