@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   CreditCard, QrCode, Landmark, Wallet, ChevronRight, Lock,
-  X, CheckCircle, AlertCircle, Smartphone, RefreshCw, Eye, EyeOff, ShieldCheck
+  X, CheckCircle, AlertCircle, Smartphone, Eye, EyeOff, ShieldCheck
 } from 'lucide-react';
 
 /* ─── Razorpay Brand Colours ─── */
@@ -42,12 +42,10 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
   const [upiId, setUpiId] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [otpError, setOtpError] = useState('');
-  const [upiTimer, setUpiTimer] = useState(120);
   const [selectedBank, setSelectedBank] = useState('');
   const [selectedWallet, setSelectedWallet] = useState('');
   const [processingMsg, setProcessingMsg] = useState('');
   const otpRefs = useRef([]);
-  const timerRef = useRef(null);
 
   const methods = [
     { id: 'card', label: 'Card', icon: <CreditCard size={16} /> },
@@ -72,24 +70,9 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
     { id: 'mobikwik', label: 'MobiKwik', color: '#1BBBEC' },
   ];
 
-  /* UPI countdown */
-  useEffect(() => {
-    if (activeMethod === 'upi' && step === 'form') {
-      timerRef.current = setInterval(() => {
-        setUpiTimer(t => {
-          if (t <= 1) { clearInterval(timerRef.current); return 0; }
-          return t - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [activeMethod, step]);
-
   const handleMethodChange = (id) => {
     setActiveMethod(id);
     setStep('form');
-    setUpiTimer(120);
-    clearInterval(timerRef.current);
   };
 
   /* OTP input handlers */
@@ -437,43 +420,61 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
 
             {/* UPI */}
             {activeMethod === 'upi' && (
-              <form onSubmit={handleUpiPay} style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
+              <form onSubmit={handleUpiPay} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                {/* UPI App Logos */}
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ width: '160px', height: '160px', margin: '0 auto', border: `3px solid ${RZP.blue}`, borderRadius: '16px', background: '#fff', padding: '12px', boxShadow: `0 0 20px rgba(51,149,255,0.2)`, animation: upiTimer > 0 ? 'rzpQrPulse 2s ease-in-out infinite' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8,1fr)', gap: '2px', width: '120px', height: '120px' }}>
-                      {Array.from({ length: 64 }, (_, i) => (
-                        <div key={i} style={{ borderRadius: '1px', background: ([3,4,5,8,9,10,24,25,26,40,41,42,56,57,58,11,27,43].includes(i) || i % 7 === 0 || i % 11 === 0) ? '#1A1A2E' : 'transparent', width: '100%', aspectRatio: '1' }} />
-                      ))}
-                    </div>
-                    {upiTimer === 0 && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.9)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                        <RefreshCw size={20} style={{ color: RZP.blue }} />
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: RZP.blue }}>QR Expired</span>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: RZP.text, marginBottom: '14px' }}>Pay using any UPI app</p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                    {[
+                      { name: 'GPay', bg: '#4285F4', label: 'G' },
+                      { name: 'PhonePe', bg: '#5F259F', label: 'Ph' },
+                      { name: 'Paytm', bg: '#00BAF2', label: 'P' },
+                      { name: 'BHIM', bg: '#008BD0', label: 'B' },
+                    ].map(app => (
+                      <div key={app.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                        <div style={{
+                          width: '48px', height: '48px', borderRadius: '14px',
+                          background: app.bg, display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', color: '#fff', fontWeight: 800,
+                          fontSize: '16px', boxShadow: `0 4px 12px ${app.bg}55`,
+                        }}>{app.label}</div>
+                        <span style={{ fontSize: '10px', color: RZP.muted, fontWeight: 600 }}>{app.name}</span>
                       </div>
-                    )}
+                    ))}
                   </div>
-                  <p style={{ marginTop: '10px', fontSize: '12px', color: RZP.muted }}>Scan with BHIM · GPay · PhonePe · Paytm</p>
-                  {upiTimer > 0 && (
-                    <div style={{ marginTop: '6px', fontSize: '12px', fontWeight: 700, color: upiTimer < 30 ? RZP.danger : RZP.blue }}>
-                      ⏱ {String(Math.floor(upiTimer / 60)).padStart(2, '0')}:{String(upiTimer % 60).padStart(2, '0')}
-                    </div>
-                  )}
+                  <p style={{ fontSize: '11px', color: RZP.muted }}>BHIM · GPay · PhonePe · Paytm · Any UPI</p>
                 </div>
-                <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ flex: 1, height: '1px', background: RZP.border }} />
-                  <span style={{ fontSize: '12px', color: RZP.muted, fontWeight: 600 }}>OR</span>
+                  <span style={{ fontSize: '12px', color: RZP.muted, fontWeight: 600 }}>Enter UPI ID</span>
                   <div style={{ flex: 1, height: '1px', background: RZP.border }} />
                 </div>
-                <div style={{ width: '100%' }}>
-                  <label style={S.label}>ENTER UPI ID</label>
-                  <input style={S.input} placeholder="mobilenumber@upi" value={upiId}
-                    onChange={e => setUpiId(e.target.value)} required
+
+                <div>
+                  <label style={S.label}>YOUR UPI ID</label>
+                  <input
+                    style={S.input}
+                    placeholder="e.g. 9876543210@paytm or name@okaxis"
+                    value={upiId}
+                    onChange={e => setUpiId(e.target.value)}
+                    required
                     onFocus={e => e.target.style.borderColor = RZP.blue}
-                    onBlur={e => e.target.style.borderColor = RZP.border} />
-                  <p style={{ fontSize: '11px', color: RZP.muted, marginTop: '6px' }}>Example: 9876543210@paytm, yourname@okaxis</p>
+                    onBlur={e => e.target.style.borderColor = RZP.border}
+                  />
+                  <p style={{ fontSize: '11px', color: RZP.muted, marginTop: '6px' }}>
+                    Format: mobilenumber@upi · name@bank · VPA@handle
+                  </p>
                 </div>
-                <button type="submit" style={{ ...S.btn, width: '100%', marginTop: 0 }}>
-                  <QrCode size={15} /> Verify & Pay ₹{totalPrice.toFixed(2)}
+
+                <div style={{ background: '#EBF3FF', borderRadius: '8px', padding: '10px 14px', fontSize: '11px', color: RZP.blue, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldCheck size={13} />
+                  A payment request will be sent to your UPI app for approval.
+                </div>
+
+                <button type="submit" style={{ ...S.btn, marginTop: 0 }}>
+                  <QrCode size={15} /> Pay ₹{totalPrice.toFixed(2)} via UPI
                 </button>
               </form>
             )}
