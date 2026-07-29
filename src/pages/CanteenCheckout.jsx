@@ -257,7 +257,12 @@ export const CanteenCheckout = () => {
             {/* Confirm Button */}
             {paymentMethod === 'online' ? (
               <button
-                onClick={() => { if (acknowledged) setShowModal(true); }}
+                onClick={() => {
+                  if (acknowledged) {
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+                    setShowModal(true);
+                  }
+                }}
                 className="btn btn-primary"
                 disabled={!acknowledged}
                 style={{ width: '100%', padding: '14px', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: acknowledged ? 1 : 0.5, cursor: acknowledged ? 'pointer' : 'not-allowed' }}

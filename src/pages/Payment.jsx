@@ -138,7 +138,7 @@ export const Payment = () => {
                 style={{ flex: 1, padding: '14px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--card-border)' }}>
                 Cancel
               </button>
-              <button onClick={() => setShowModal(true)} className="btn btn-primary"
+              <button onClick={() => { window.scrollTo({ top: 0, behavior: 'instant' }); setShowModal(true); }} className="btn btn-primary"
                 style={{ flex: 2, padding: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '1rem', fontWeight: 700 }}>
                 <Lock size={16} /> Pay ₹{totalPrice.toFixed(2)} Securely
               </button>

@@ -23,17 +23,78 @@ const fmtExpiry = (v) => {
   return raw.length > 2 ? raw.slice(0, 2) + ' / ' + raw.slice(2) : raw;
 };
 
+/* ─── Module-level style constants (stable across renders — fixes re-mount on keystroke) ─── */
+const INPUT_STYLE = {
+  width: '100%',
+  border: `1.5px solid ${RZP.border}`,
+  borderRadius: '8px',
+  padding: '9px 12px',
+  fontSize: '13px',
+  color: RZP.text,
+  background: '#fff',
+  outline: 'none',
+  transition: 'border-color 0.2s',
+  boxSizing: 'border-box',
+};
+const LABEL_STYLE = {
+  fontSize: '11px', fontWeight: 600, color: RZP.muted,
+  marginBottom: '4px', display: 'block', letterSpacing: '0.03em',
+};
+const BTN_STYLE = {
+  width: '100%',
+  background: `linear-gradient(135deg, ${RZP.blue}, ${RZP.darkBlue})`,
+  color: '#fff', border: 'none', borderRadius: '8px', padding: '12px',
+  fontWeight: 700, fontSize: '14px', cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+  transition: 'opacity 0.2s', marginTop: '12px',
+};
+const methodBtnStyle = (active) => ({
+  display: 'flex', alignItems: 'center', gap: '10px',
+  padding: '10px 14px', cursor: 'pointer',
+  background: active ? '#EBF3FF' : 'transparent',
+  color: active ? RZP.blue : RZP.text,
+  fontWeight: active ? 700 : 500, fontSize: '13px',
+  transition: 'all 0.15s', border: 'none', width: '100%', textAlign: 'left',
+  borderLeft: `3px solid ${active ? RZP.blue : 'transparent'}`,
+});
+
+/* ─── Overlay — defined OUTSIDE RazorpayModal so React never remounts it on state change ─── */
+const Overlay = ({ children, onClose: handleClose }) => (
+  <div
+    style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      zIndex: 99999,
+      background: 'rgba(0,0,0,0.82)',
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
+      display: 'flex',
+      /* flex-start anchors modal near top — avoids centering bugs
+         when modal height ≈ viewport height on small screens */
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      /* paddingTop keeps modal below navbar, paddingBottom prevents bottom clip */
+      padding: '20px 16px 20px',
+      overflowY: 'auto',
+      boxSizing: 'border-box',
+    }}
+    onClick={e => { if (e.target === e.currentTarget) handleClose(); }}
+  >
+    {children}
+  </div>
+);
+
 /**
  * RazorpayModal
  * Props:
- *   totalPrice  {number}   - amount to show
- *   merchantName {string}  - shown in sidebar (facility or canteen name)
- *   onSuccess   {async fn} - called after simulated payment; should do the real API call; throw to trigger failure screen
- *   onClose     {fn}       - called when user closes modal without paying
+ *   totalPrice   {number}   - amount to show
+ *   merchantName {string}   - facility name
+ *   onSuccess    {async fn} - called after simulated payment
+ *   onClose      {fn}       - called when user closes modal without paying
  */
 const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
   const [activeMethod, setActiveMethod] = useState('card');
-  const [step, setStep] = useState('form'); // form | otp | processing | done | failed
+  const [step, setStep] = useState('form');
   const [cardNum, setCardNum] = useState('');
   const [cardName, setCardName] = useState('');
   const [expiry, setExpiry] = useState('');
@@ -140,239 +201,183 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
     await runProcessing(finalizePayment);
   };
 
-  /* ─── Block body scroll & scroll to top when modal is open ─── */
+  /* ─── On mount: scroll to top + block body scroll ─── */
   useEffect(() => {
-    // Scroll window to top so fixed/absolute container alignment starts from top
-    window.scrollTo({ top: 10, behavior: 'auto' });
-
+    // Scroll to top so modal is always fully visible
+    window.scrollTo({ top: 0, behavior: 'instant' });
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  /* ─── Shared Styles ─── */
-  const S = {
-    overlay: {
-      position: 'fixed', inset: -70, zIndex: 9999,
-      background: 'rgba(0,0,0,0.72)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)',
-      display: 'flex',
-      alignItems: 'flex-start',     /* start from top so content isn't clipped */
-      justifyContent: 'center',
-      /* 80px = fixed navbar height; 16px bottom breathing room */
-      padding: '80px 16px 16px',
-      overflowY: 'auto',            /* overlay scrolls if modal taller than viewport */
-      animation: 'rzpFadeIn 0.2s ease',
-      boxSizing: 'border-box',
-    },
-    /* helper: vertically centers small modals (processing/done/failed/otp) */
-    overlayCenter: {
-      position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.72)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '80px 16px 16px',
-      overflowY: 'auto',
-      animation: 'rzpFadeIn 0.2s ease',
-      boxSizing: 'border-box',
-    },
-    modal: {
-      width: '100%', maxWidth: '820px',
-      display: 'flex', borderRadius: '12px',
-      overflow: 'hidden',           /* clips rounded corners */
-      boxShadow: '0 25px 80px rgba(0,0,0,0.55)',
-      animation: 'rzpSlideUp 0.3s ease',
-      /* (100vh - 80px top padding - 16px bottom padding) */
-      maxHeight: 'calc(100vh - 96px)',
-      flexShrink: 0,
-    },
-    sidebar: {
-      width: '240px', minWidth: '240px',
-      background: RZP.sidebar, borderRight: `1px solid ${RZP.border}`,
-      display: 'flex', flexDirection: 'column',
-      overflowY: 'auto',
-    },
-    sidebarHeader: { padding: '20px 16px', borderBottom: `1px solid ${RZP.border}`, background: '#fff', flexShrink: 0 },
-    content: {
-      flex: 1, background: '#fff', display: 'flex', flexDirection: 'column',
-      overflowY: 'auto',          /* only inner content scrolls, not the page */
-      minWidth: 0,
-    },
-    contentHeader: {
-      padding: '16px 24px', borderBottom: `1px solid ${RZP.border}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      background: '#fff', flexShrink: 0,
-    },
-    formArea: { padding: '24px', flex: 1 },
-    input: {
-      width: '100%', border: `1.5px solid ${RZP.border}`, borderRadius: '8px',
-      padding: '10px 14px', fontSize: '14px', color: RZP.text, background: '#fff',
-      outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box',
-    },
-    label: { fontSize: '12px', fontWeight: 600, color: RZP.muted, marginBottom: '6px', display: 'block', letterSpacing: '0.03em' },
-    btn: {
-      width: '100%', background: `linear-gradient(135deg, ${RZP.blue}, ${RZP.darkBlue})`,
-      color: '#fff', border: 'none', borderRadius: '8px', padding: '13px',
-      fontWeight: 700, fontSize: '15px', cursor: 'pointer',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-      transition: 'opacity 0.2s', marginTop: '20px',
-    },
-    methodBtn: (active) => ({
-      display: 'flex', alignItems: 'center', gap: '10px',
-      padding: '12px 16px', cursor: 'pointer',
-      borderLeft: `3px solid ${active ? RZP.blue : 'transparent'}`,
-      background: active ? '#EBF3FF' : 'transparent',
-      color: active ? RZP.blue : RZP.text, fontWeight: active ? 700 : 500, fontSize: '13px',
-      transition: 'all 0.15s', border: 'none', width: '100%', textAlign: 'left',
-      borderLeftWidth: '3px', borderLeftStyle: 'solid',
-    }),
-  };
+  /* styles are now module-level constants: INPUT_STYLE, LABEL_STYLE, BTN_STYLE, methodBtnStyle */
 
   /* ── PROCESSING ── */
   if (step === 'processing') return (
-    <div style={S.overlayCenter}>
-      <div style={{ ...S.modal, maxWidth: '360px', borderRadius: '16px' }}>
-        <div style={{ background: '#fff', padding: '48px 32px', textAlign: 'center', flex: 1 }}>
-          <div style={{ width: '64px', height: '64px', margin: '0 auto 24px', position: 'relative' }}>
-            <svg viewBox="0 0 64 64" style={{ width: '100%', height: '100%', animation: 'rzpSpin 1s linear infinite' }}>
-              <circle cx="32" cy="32" r="28" fill="none" stroke="#E8EEF8" strokeWidth="4" />
-              <circle cx="32" cy="32" r="28" fill="none" stroke={RZP.blue} strokeWidth="4" strokeDasharray="44 132" strokeLinecap="round" />
-            </svg>
-          </div>
-          <p style={{ fontWeight: 700, fontSize: '15px', color: RZP.text, marginBottom: '8px' }}>Processing Payment</p>
-          <p style={{ fontSize: '13px', color: RZP.muted }}>{processingMsg}</p>
-          <div style={{ marginTop: '24px', display: 'flex', gap: '6px', justifyContent: 'center' }}>
-            {[0, 1, 2].map(i => (
-              <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: RZP.blue, animation: `rzpBounce 1.2s ${i * 0.2}s ease-in-out infinite` }} />
-            ))}
-          </div>
+    <Overlay onClose={onClose}>
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '48px 32px', textAlign: 'center', width: '100%', maxWidth: '360px', boxShadow: '0 25px 80px rgba(0,0,0,0.55)' }}>
+        <div style={{ width: '64px', height: '64px', margin: '0 auto 24px', position: 'relative' }}>
+          <svg viewBox="0 0 64 64" style={{ width: '100%', height: '100%', animation: 'rzpSpin 1s linear infinite' }}>
+            <circle cx="32" cy="32" r="28" fill="none" stroke="#E8EEF8" strokeWidth="4" />
+            <circle cx="32" cy="32" r="28" fill="none" stroke={RZP.blue} strokeWidth="4" strokeDasharray="44 132" strokeLinecap="round" />
+          </svg>
+        </div>
+        <p style={{ fontWeight: 700, fontSize: '15px', color: RZP.text, marginBottom: '8px' }}>Processing Payment</p>
+        <p style={{ fontSize: '13px', color: RZP.muted }}>{processingMsg}</p>
+        <div style={{ marginTop: '24px', display: 'flex', gap: '6px', justifyContent: 'center' }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: RZP.blue, animation: `rzpBounce 1.2s ${i * 0.2}s ease-in-out infinite` }} />
+          ))}
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 
   /* ── SUCCESS ── */
   if (step === 'done') return (
-    <div style={S.overlayCenter}>
-      <div style={{ ...S.modal, maxWidth: '360px', borderRadius: '16px' }}>
-        <div style={{ background: '#fff', padding: '48px 32px', textAlign: 'center', flex: 1 }}>
-          <div style={{ width: '72px', height: '72px', margin: '0 auto 20px', borderRadius: '50%', background: 'rgba(16,185,129,0.1)', border: '2px solid #10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'rzpScaleIn 0.4s ease' }}>
-            <CheckCircle size={36} style={{ color: '#10B981' }} />
-          </div>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, color: RZP.text, marginBottom: '8px' }}>Payment Successful!</h2>
-          <p style={{ color: RZP.muted, fontSize: '14px', marginBottom: '4px' }}>₹{totalPrice.toFixed(2)} paid successfully</p>
-          <p style={{ color: RZP.muted, fontSize: '13px', marginBottom: '28px' }}><strong style={{ color: RZP.text }}>{merchantName}</strong></p>
-          <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px', fontSize: '12px', color: '#166534' }}>
-            ✅ Confirmation has been sent to your inbox.
-          </div>
+    <Overlay onClose={onClose}>
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '48px 32px', textAlign: 'center', width: '100%', maxWidth: '360px', boxShadow: '0 25px 80px rgba(0,0,0,0.55)' }}>
+        <div style={{ width: '72px', height: '72px', margin: '0 auto 20px', borderRadius: '50%', background: 'rgba(16,185,129,0.1)', border: '2px solid #10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'rzpScaleIn 0.4s ease' }}>
+          <CheckCircle size={36} style={{ color: '#10B981' }} />
+        </div>
+        <h2 style={{ fontSize: '20px', fontWeight: 800, color: RZP.text, marginBottom: '8px' }}>Payment Successful!</h2>
+        <p style={{ color: RZP.muted, fontSize: '14px', marginBottom: '4px' }}>₹{totalPrice.toFixed(2)} paid successfully</p>
+        <p style={{ color: RZP.muted, fontSize: '13px', marginBottom: '28px' }}><strong style={{ color: RZP.text }}>{merchantName}</strong></p>
+        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px', fontSize: '12px', color: '#166534' }}>
+          ✅ Confirmation has been sent to your inbox.
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 
   /* ── FAILED ── */
   if (step === 'failed') return (
-    <div style={S.overlayCenter}>
-      <div style={{ ...S.modal, maxWidth: '360px', borderRadius: '16px' }}>
-        <div style={{ background: '#fff', padding: '48px 32px', textAlign: 'center', flex: 1 }}>
-          <div style={{ width: '72px', height: '72px', margin: '0 auto 20px', borderRadius: '50%', background: '#FEF2F2', border: '2px solid #EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AlertCircle size={36} style={{ color: '#EF4444' }} />
-          </div>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, color: RZP.text, marginBottom: '8px' }}>Payment Failed</h2>
-          <p style={{ color: RZP.muted, fontSize: '14px', marginBottom: '28px' }}>Something went wrong. Please try again.</p>
-          <button style={{ ...S.btn, background: '#EF4444', marginTop: 0 }} onClick={() => setStep('form')}>
-            <RefreshCw size={16} /> Try Again
-          </button>
-          <button onClick={onClose} style={{ marginTop: '12px', background: 'none', border: 'none', color: RZP.muted, cursor: 'pointer', fontSize: '13px' }}>
-            Cancel
-          </button>
+    <Overlay onClose={onClose}>
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '48px 32px', textAlign: 'center', width: '100%', maxWidth: '360px', boxShadow: '0 25px 80px rgba(0,0,0,0.55)' }}>
+        <div style={{ width: '72px', height: '72px', margin: '0 auto 20px', borderRadius: '50%', background: '#FEF2F2', border: '2px solid #EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <AlertCircle size={36} style={{ color: '#EF4444' }} />
         </div>
+        <h2 style={{ fontSize: '20px', fontWeight: 800, color: RZP.text, marginBottom: '8px' }}>Payment Failed</h2>
+        <p style={{ color: RZP.muted, fontSize: '14px', marginBottom: '28px' }}>Something went wrong. Please try again.</p>
+        <button style={{ ...BTN_STYLE, background: '#EF4444', marginTop: 0 }} onClick={() => setStep('form')}>
+          <RefreshCw size={16} /> Try Again
+        </button>
+        <button onClick={onClose} style={{ marginTop: '12px', background: 'none', border: 'none', color: RZP.muted, cursor: 'pointer', fontSize: '13px' }}>
+          Cancel
+        </button>
       </div>
-    </div>
+    </Overlay>
   );
 
   /* ── OTP ── */
   if (step === 'otp') return (
-    <div style={S.overlayCenter}>
-      <div style={{ ...S.modal, maxWidth: '420px', borderRadius: '16px' }}>
-        <div style={{ background: '#fff', flex: 1, overflow: 'auto' }}>
-          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${RZP.border}`, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: RZP.blue, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Lock size={14} color="#fff" />
-            </div>
-            <div>
-              <p style={{ fontWeight: 700, fontSize: '13px', color: RZP.text }}>Secure 3D Authentication</p>
-              <p style={{ fontSize: '11px', color: RZP.muted }}>Powered by your bank</p>
-            </div>
+    <Overlay onClose={onClose}>
+      <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '420px', overflow: 'hidden', boxShadow: '0 25px 80px rgba(0,0,0,0.55)' }}>
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${RZP.border}`, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: RZP.blue, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Lock size={14} color="#fff" />
           </div>
-          <div style={{ padding: '28px', textAlign: 'center' }}>
-            <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#EBF3FF', border: `2px solid ${RZP.blue}`, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Smartphone size={22} style={{ color: RZP.blue }} />
-            </div>
-            <h3 style={{ fontWeight: 700, fontSize: '16px', color: RZP.text, marginBottom: '6px' }}>Enter OTP</h3>
-            <p style={{ fontSize: '13px', color: RZP.muted, marginBottom: '24px' }}>
-              A 6-digit OTP has been sent to your registered mobile number linked with your card.
-            </p>
-            <form onSubmit={handleOtpSubmit}>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '16px' }}>
-                {otp.map((digit, i) => (
-                  <input key={i} ref={el => otpRefs.current[i] = el}
-                    type="text" inputMode="numeric" maxLength={1} value={digit}
-                    onChange={e => handleOtpChange(i, e.target.value)}
-                    onKeyDown={e => handleOtpKey(i, e)}
-                    style={{ width: '44px', height: '52px', textAlign: 'center', fontSize: '20px', fontWeight: 700, border: `2px solid ${digit ? RZP.blue : RZP.border}`, borderRadius: '10px', outline: 'none', color: RZP.text, background: digit ? '#EBF3FF' : '#fff', transition: 'all 0.15s' }}
-                  />
-                ))}
-              </div>
-              {otpError && <p style={{ color: RZP.danger, fontSize: '12px', marginBottom: '12px' }}>{otpError}</p>}
-              <p style={{ fontSize: '11px', color: RZP.muted, marginBottom: '20px' }}>
-                Demo: Enter any 6 digits (e.g. <strong>123456</strong>)
-              </p>
-              <button type="submit" style={S.btn}>
-                <Lock size={15} /> Verify & Pay ₹{totalPrice.toFixed(2)}
-              </button>
-            </form>
-            <button onClick={() => setStep('form')} style={{ marginTop: '12px', background: 'none', border: 'none', color: RZP.muted, cursor: 'pointer', fontSize: '12px' }}>
-              ← Back to payment
-            </button>
+          <div>
+            <p style={{ fontWeight: 700, fontSize: '13px', color: RZP.text }}>Secure 3D Authentication</p>
+            <p style={{ fontSize: '11px', color: RZP.muted }}>Powered by your bank</p>
           </div>
         </div>
+        <div style={{ padding: '28px', textAlign: 'center' }}>
+          <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#EBF3FF', border: `2px solid ${RZP.blue}`, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Smartphone size={22} style={{ color: RZP.blue }} />
+          </div>
+          <h3 style={{ fontWeight: 700, fontSize: '16px', color: RZP.text, marginBottom: '6px' }}>Enter OTP</h3>
+          <p style={{ fontSize: '13px', color: RZP.muted, marginBottom: '24px' }}>
+            A 6-digit OTP has been sent to your registered mobile number linked with your card.
+          </p>
+          <form onSubmit={handleOtpSubmit}>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '16px' }}>
+              {otp.map((digit, i) => (
+                <input key={i} ref={el => otpRefs.current[i] = el}
+                  type="text" inputMode="numeric" maxLength={1} value={digit}
+                  onChange={e => handleOtpChange(i, e.target.value)}
+                  onKeyDown={e => handleOtpKey(i, e)}
+                  style={{ width: '44px', height: '52px', textAlign: 'center', fontSize: '20px', fontWeight: 700, border: `2px solid ${digit ? RZP.blue : RZP.border}`, borderRadius: '10px', outline: 'none', color: RZP.text, background: digit ? '#EBF3FF' : '#fff', transition: 'all 0.15s' }}
+                />
+              ))}
+            </div>
+            {otpError && <p style={{ color: RZP.danger, fontSize: '12px', marginBottom: '12px' }}>{otpError}</p>}
+            <p style={{ fontSize: '11px', color: RZP.muted, marginBottom: '20px' }}>
+              Demo: Enter any 6 digits (e.g. <strong>123456</strong>)
+            </p>
+            <button type="submit" style={BTN_STYLE}>
+              <Lock size={15} /> Verify & Pay ₹{totalPrice.toFixed(2)}
+            </button>
+          </form>
+          <button onClick={() => setStep('form')} style={{ marginTop: '12px', background: 'none', border: 'none', color: RZP.muted, cursor: 'pointer', fontSize: '12px' }}>
+            ← Back to payment
+          </button>
+        </div>
       </div>
-    </div>
+    </Overlay>
   );
 
   /* ── MAIN MODAL ── */
   return (
-    <div style={S.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={S.modal} className="rzp-modal-root">
+    <Overlay onClose={onClose}>
+      {/* The modal box */}
+      <div
+        className="rzp-modal-root"
+        style={{
+          width: '100%',
+          maxWidth: '780px',
+          display: 'flex',
+          borderRadius: '14px',
+          overflow: 'hidden',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+          animation: 'rzpSlideUp 0.3s ease',
+          /* maxHeight ensures modal never exceeds viewport height */
+          maxHeight: 'calc(100vh - 44px)',
+        }}
+      >
 
-        {/* SIDEBAR */}
-        <div style={S.sidebar} className="rzp-sidebar">
-          <div style={S.sidebarHeader} className="rzp-sidebar-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: RZP.blue, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Lock size={13} color="#fff" />
+        {/* ── SIDEBAR ── */}
+        <div
+          className="rzp-sidebar"
+          style={{
+            width: '220px', minWidth: '220px',
+            background: RZP.sidebar,
+            borderRight: `1px solid ${RZP.border}`,
+            display: 'flex', flexDirection: 'column',
+            overflowY: 'auto',
+          }}
+        >
+          {/* Brand + Amount — more compact */}
+          <div className="rzp-sidebar-header" style={{ padding: '12px 14px', borderBottom: `1px solid ${RZP.border}`, background: '#fff', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ width: '26px', height: '26px', borderRadius: '7px', background: RZP.blue, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Lock size={12} color="#fff" />
               </div>
               <div>
-                <p style={{ fontWeight: 800, fontSize: '13px', color: RZP.text }}>SportSlot Pay</p>
+                <p style={{ fontWeight: 800, fontSize: '12px', color: RZP.text, lineHeight: 1.2 }}>SportSlot Pay</p>
                 <p style={{ fontSize: '10px', color: RZP.muted }}>Secure Checkout</p>
               </div>
             </div>
-            <div style={{ background: '#EBF3FF', borderRadius: '8px', padding: '10px 12px' }}>
-              <p style={{ fontSize: '11px', color: RZP.muted, marginBottom: '2px' }}>Amount Due</p>
-              <p style={{ fontWeight: 800, fontSize: '20px', color: RZP.text }}>₹{totalPrice.toFixed(2)}</p>
-              <p style={{ fontSize: '11px', color: RZP.muted, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{merchantName}</p>
+            <div style={{ background: '#EBF3FF', borderRadius: '8px', padding: '8px 10px' }}>
+              <p style={{ fontSize: '10px', color: RZP.muted, marginBottom: '1px' }}>Amount Due</p>
+              <p style={{ fontWeight: 800, fontSize: '18px', color: RZP.text, lineHeight: 1.2 }}>₹{totalPrice.toFixed(2)}</p>
+              <p style={{ fontSize: '10px', color: RZP.muted, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{merchantName}</p>
             </div>
           </div>
 
-          <div style={{ flex: 1, paddingTop: '8px' }} className="rzp-sidebar-methods">
-            <p style={{ fontSize: '10px', fontWeight: 700, color: RZP.muted, padding: '8px 16px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Payment Methods</p>
+          {/* Payment Methods List */}
+          <div className="rzp-sidebar-methods" style={{ flex: 1, paddingTop: '8px' }}>
+            <p style={{ fontSize: '10px', fontWeight: 700, color: RZP.muted, padding: '8px 16px 4px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Payment Methods
+            </p>
             {methods.map(m => (
-              <button key={m.id} className="rzp-method-btn" data-active={activeMethod === m.id} style={S.methodBtn(activeMethod === m.id)} onClick={() => handleMethodChange(m.id)}>
+              <button
+                key={m.id}
+                className="rzp-method-btn"
+                data-active={activeMethod === m.id}
+                style={methodBtnStyle(activeMethod === m.id)}
+                onClick={() => handleMethodChange(m.id)}
+              >
                 <span style={{ opacity: activeMethod === m.id ? 1 : 0.6 }}>{m.icon}</span>
                 {m.label}
                 {activeMethod === m.id && <ChevronRight size={14} style={{ marginLeft: 'auto' }} />}
@@ -380,60 +385,64 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
             ))}
           </div>
 
-          <div className="rzp-sidebar-footer" style={{ padding: '12px 16px', borderTop: `1px solid ${RZP.border}`, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* SSL Badge */}
+          <div className="rzp-sidebar-footer" style={{ padding: '10px 14px', borderTop: `1px solid ${RZP.border}`, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Lock size={11} style={{ color: RZP.muted }} />
             <span style={{ fontSize: '10px', color: RZP.muted }}>256-bit SSL Encrypted</span>
           </div>
         </div>
 
-        {/* CONTENT */}
-        <div style={S.content}>
-          <div style={S.contentHeader}>
+        {/* ── CONTENT PANEL ── */}
+        <div style={{ flex: 1, background: '#fff', display: 'flex', flexDirection: 'column', overflowY: 'auto', minWidth: 0 }}>
+
+          {/* Content Header — compact */}
+          <div style={{ padding: '10px 18px', borderBottom: `1px solid ${RZP.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', flexShrink: 0 }}>
             <div>
-              <p style={{ fontWeight: 700, fontSize: '14px', color: RZP.text }}>
+              <p style={{ fontWeight: 700, fontSize: '13px', color: RZP.text }}>
                 {activeMethod === 'card' && 'Pay with Card'}
                 {activeMethod === 'upi' && 'UPI Payment'}
                 {activeMethod === 'netbanking' && 'Net Banking'}
                 {activeMethod === 'wallet' && 'Wallets'}
               </p>
-              <p style={{ fontSize: '11px', color: RZP.muted }}>All transactions are secure and encrypted</p>
+              <p style={{ fontSize: '10px', color: RZP.muted }}>All transactions are secure and encrypted</p>
             </div>
             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '6px', display: 'flex' }}>
-              <X size={18} style={{ color: RZP.muted }} />
+              <X size={16} style={{ color: RZP.muted }} />
             </button>
           </div>
 
-          <div style={S.formArea}>
+          {/* Form Area — compact padding */}
+          <div style={{ padding: '14px 18px', flex: 1, overflowY: 'auto' }}>
 
-            {/* CARD */}
+            {/* ── CARD ── */}
             {activeMethod === 'card' && (
-              <form onSubmit={handleCardPay} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <form onSubmit={handleCardPay} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <label style={S.label}>CARD NUMBER</label>
-                  <input style={S.input} placeholder="1234 5678 9012 3456" value={cardNum}
+                  <label style={LABEL_STYLE}>CARD NUMBER</label>
+                  <input style={INPUT_STYLE} placeholder="1234 5678 9012 3456" value={cardNum}
                     onChange={e => setCardNum(fmtCard(e.target.value))} required
                     onFocus={e => e.target.style.borderColor = RZP.blue}
                     onBlur={e => e.target.style.borderColor = RZP.border} />
                 </div>
                 <div>
-                  <label style={S.label}>NAME ON CARD</label>
-                  <input style={S.input} placeholder="John Doe" value={cardName}
+                  <label style={LABEL_STYLE}>NAME ON CARD</label>
+                  <input style={INPUT_STYLE} placeholder="John Doe" value={cardName}
                     onChange={e => setCardName(e.target.value)} required
                     onFocus={e => e.target.style.borderColor = RZP.blue}
                     onBlur={e => e.target.style.borderColor = RZP.border} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
-                    <label style={S.label}>EXPIRY</label>
-                    <input style={S.input} placeholder="MM / YY" value={expiry} maxLength={7}
+                    <label style={LABEL_STYLE}>EXPIRY</label>
+                    <input style={INPUT_STYLE} placeholder="MM / YY" value={expiry} maxLength={7}
                       onChange={e => setExpiry(fmtExpiry(e.target.value))} required
                       onFocus={e => e.target.style.borderColor = RZP.blue}
                       onBlur={e => e.target.style.borderColor = RZP.border} />
                   </div>
                   <div>
-                    <label style={S.label}>CVV</label>
+                    <label style={LABEL_STYLE}>CVV</label>
                     <div style={{ position: 'relative' }}>
-                      <input style={{ ...S.input, paddingRight: '36px' }}
+                      <input style={{ ...INPUT_STYLE, paddingRight: '36px' }}
                         type={showCvv ? 'text' : 'password'} placeholder="•••" value={cvv}
                         onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))} required
                         onFocus={e => e.target.style.borderColor = RZP.blue}
@@ -445,131 +454,111 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   {['VISA', 'MC', 'AMEX', 'RuPay'].map(c => (
-                    <div key={c} style={{ padding: '3px 8px', border: `1px solid ${RZP.border}`, borderRadius: '4px', fontSize: '9px', fontWeight: 800, color: RZP.muted, letterSpacing: '0.05em' }}>{c}</div>
+                    <div key={c} style={{ padding: '3px 7px', border: `1px solid ${RZP.border}`, borderRadius: '4px', fontSize: '9px', fontWeight: 800, color: RZP.muted, letterSpacing: '0.05em' }}>{c}</div>
                   ))}
                 </div>
-                <button type="submit" style={S.btn}>
-                  <Lock size={15} /> Pay ₹{totalPrice.toFixed(2)}
+                <button type="submit" style={BTN_STYLE}>
+                  <Lock size={14} /> Pay ₹{totalPrice.toFixed(2)}
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '6px', padding: '8px 12px' }}>
-                  <ShieldCheck size={13} style={{ color: '#10B981', flexShrink: 0 }} />
-                  <span style={{ fontSize: '11px', color: '#166534' }}>Your card details are never stored. 3D Secure authentication will be triggered.</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '6px', padding: '7px 10px' }}>
+                  <ShieldCheck size={12} style={{ color: '#10B981', flexShrink: 0 }} />
+                  <span style={{ fontSize: '10px', color: '#166534' }}>Your card details are never stored. 3D Secure authentication will be triggered.</span>
                 </div>
               </form>
             )}
 
-            {/* UPI */}
+            {/* ── UPI ── */}
             {activeMethod === 'upi' && (
-              <form onSubmit={handleUpiPay} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-                {/* UPI App Logos */}
+              <form onSubmit={handleUpiPay} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: RZP.text, marginBottom: '14px' }}>Pay using any UPI app</p>
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: RZP.text, marginBottom: '12px' }}>Pay using any UPI app</p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap', marginBottom: '8px' }}>
                     {[
                       { name: 'GPay', bg: '#4285F4', label: 'G' },
                       { name: 'PhonePe', bg: '#5F259F', label: 'Ph' },
                       { name: 'Paytm', bg: '#00BAF2', label: 'P' },
                       { name: 'BHIM', bg: '#008BD0', label: 'B' },
                     ].map(app => (
-                      <div key={app.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                        <div style={{
-                          width: '48px', height: '48px', borderRadius: '14px',
-                          background: app.bg, display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', color: '#fff', fontWeight: 800,
-                          fontSize: '16px', boxShadow: `0 4px 12px ${app.bg}55`,
-                        }}>{app.label}</div>
+                      <div key={app.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+                        <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: app.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '14px', boxShadow: `0 4px 12px ${app.bg}55` }}>{app.label}</div>
                         <span style={{ fontSize: '10px', color: RZP.muted, fontWeight: 600 }}>{app.name}</span>
                       </div>
                     ))}
                   </div>
                   <p style={{ fontSize: '11px', color: RZP.muted }}>BHIM · GPay · PhonePe · Paytm · Any UPI</p>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ flex: 1, height: '1px', background: RZP.border }} />
                   <span style={{ fontSize: '12px', color: RZP.muted, fontWeight: 600 }}>Enter UPI ID</span>
                   <div style={{ flex: 1, height: '1px', background: RZP.border }} />
                 </div>
-
                 <div>
-                  <label style={S.label}>YOUR UPI ID</label>
-                  <input
-                    style={S.input}
-                    placeholder="e.g. 9876543210@paytm or name@okaxis"
-                    value={upiId}
-                    onChange={e => setUpiId(e.target.value)}
-                    required
+                  <label style={LABEL_STYLE}>YOUR UPI ID</label>
+                  <input style={INPUT_STYLE} placeholder="e.g. 9876543210@paytm or name@okaxis" value={upiId}
+                    onChange={e => setUpiId(e.target.value)} required
                     onFocus={e => e.target.style.borderColor = RZP.blue}
-                    onBlur={e => e.target.style.borderColor = RZP.border}
-                  />
-                  <p style={{ fontSize: '11px', color: RZP.muted, marginTop: '6px' }}>
-                    Format: mobilenumber@upi · name@bank · VPA@handle
-                  </p>
+                    onBlur={e => e.target.style.borderColor = RZP.border} />
+                  <p style={{ fontSize: '11px', color: RZP.muted, marginTop: '5px' }}>Format: mobilenumber@upi · name@bank · VPA@handle</p>
                 </div>
-
-                <div style={{ background: '#EBF3FF', borderRadius: '8px', padding: '10px 14px', fontSize: '11px', color: RZP.blue, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ShieldCheck size={13} />
-                  A payment request will be sent to your UPI app for approval.
+                <div style={{ background: '#EBF3FF', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', color: RZP.blue, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldCheck size={13} /> A payment request will be sent to your UPI app for approval.
                 </div>
-
-                <button type="submit" style={{ ...S.btn, marginTop: 0 }}>
-                  <QrCode size={15} /> Pay ₹{totalPrice.toFixed(2)} via UPI
+                <button type="submit" style={{ ...BTN_STYLE, marginTop: 0 }}>
+                  <QrCode size={14} /> Pay ₹{totalPrice.toFixed(2)} via UPI
                 </button>
               </form>
             )}
 
-            {/* NET BANKING */}
+            {/* ── NET BANKING ── */}
             {activeMethod === 'netbanking' && (
-              <form onSubmit={handleNetbankingPay} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <form onSubmit={handleNetbankingPay} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <p style={{ fontSize: '13px', color: RZP.text, fontWeight: 600 }}>Select your bank</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   {banks.map(b => (
                     <button key={b.id} type="button" onClick={() => setSelectedBank(b.id)}
-                      style={{ padding: '12px', border: `1.5px solid ${selectedBank === b.id ? RZP.blue : RZP.border}`, borderRadius: '8px', background: selectedBank === b.id ? '#EBF3FF' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.15s', textAlign: 'left' }}>
+                      style={{ padding: '10px', border: `1.5px solid ${selectedBank === b.id ? RZP.blue : RZP.border}`, borderRadius: '8px', background: selectedBank === b.id ? '#EBF3FF' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.15s', textAlign: 'left' }}>
                       <span style={{ fontSize: '18px' }}>{b.logo}</span>
                       <span style={{ fontSize: '12px', fontWeight: selectedBank === b.id ? 700 : 500, color: selectedBank === b.id ? RZP.blue : RZP.text }}>{b.label}</span>
-                      {selectedBank === b.id && <CheckCircle size={14} style={{ color: RZP.blue, marginLeft: 'auto' }} />}
+                      {selectedBank === b.id && <CheckCircle size={13} style={{ color: RZP.blue, marginLeft: 'auto' }} />}
                     </button>
                   ))}
                 </div>
                 {selectedBank && (
-                  <div style={{ background: '#EBF3FF', borderRadius: '8px', padding: '12px', fontSize: '12px', color: RZP.blue, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <ShieldCheck size={14} />
-                    You will be redirected to {banks.find(b => b.id === selectedBank)?.label} for secure payment.
+                  <div style={{ background: '#EBF3FF', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', color: RZP.blue, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ShieldCheck size={13} /> You will be redirected to {banks.find(b => b.id === selectedBank)?.label} for secure payment.
                   </div>
                 )}
                 <button type="submit" disabled={!selectedBank}
-                  style={{ ...S.btn, opacity: selectedBank ? 1 : 0.5, cursor: selectedBank ? 'pointer' : 'not-allowed', marginTop: 0 }}>
-                  <Landmark size={15} /> Pay ₹{totalPrice.toFixed(2)} via Net Banking
+                  style={{ ...BTN_STYLE, opacity: selectedBank ? 1 : 0.5, cursor: selectedBank ? 'pointer' : 'not-allowed', marginTop: 0 }}>
+                  <Landmark size={14} /> Pay ₹{totalPrice.toFixed(2)} via Net Banking
                 </button>
               </form>
             )}
 
-            {/* WALLETS */}
+            {/* ── WALLETS ── */}
             {activeMethod === 'wallet' && (
-              <form onSubmit={handleWalletPay} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <form onSubmit={handleWalletPay} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <p style={{ fontSize: '13px', color: RZP.text, fontWeight: 600 }}>Select your wallet</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {wallets.map(w => (
                     <button key={w.id} type="button" onClick={() => setSelectedWallet(w.id)}
-                      style={{ padding: '14px 16px', border: `1.5px solid ${selectedWallet === w.id ? w.color : RZP.border}`, borderRadius: '8px', background: selectedWallet === w.id ? `${w.color}15` : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.15s', textAlign: 'left' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: w.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Wallet size={18} color="#fff" />
+                      style={{ padding: '12px 14px', border: `1.5px solid ${selectedWallet === w.id ? w.color : RZP.border}`, borderRadius: '8px', background: selectedWallet === w.id ? `${w.color}15` : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.15s', textAlign: 'left' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: w.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Wallet size={16} color="#fff" />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: selectedWallet === w.id ? 700 : 500, fontSize: '14px', color: selectedWallet === w.id ? w.color : RZP.text }}>{w.label}</p>
+                        <p style={{ fontWeight: selectedWallet === w.id ? 700 : 500, fontSize: '13px', color: selectedWallet === w.id ? w.color : RZP.text }}>{w.label}</p>
                         <p style={{ fontSize: '11px', color: RZP.muted }}>Pay using {w.label} balance</p>
                       </div>
-                      {selectedWallet === w.id && <CheckCircle size={18} style={{ color: w.color }} />}
+                      {selectedWallet === w.id && <CheckCircle size={16} style={{ color: w.color }} />}
                     </button>
                   ))}
                 </div>
                 <button type="submit" disabled={!selectedWallet}
-                  style={{ ...S.btn, opacity: selectedWallet ? 1 : 0.5, cursor: selectedWallet ? 'pointer' : 'not-allowed', marginTop: 0 }}>
-                  <Wallet size={15} /> Pay ₹{totalPrice.toFixed(2)}
+                  style={{ ...BTN_STYLE, opacity: selectedWallet ? 1 : 0.5, cursor: selectedWallet ? 'pointer' : 'not-allowed', marginTop: 0 }}>
+                  <Wallet size={14} /> Pay ₹{totalPrice.toFixed(2)}
                 </button>
               </form>
             )}
@@ -578,55 +567,27 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
         </div>
       </div>
 
+      {/* ── Global Keyframes ── */}
       <style>{`
-        @keyframes rzpFadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes rzpSlideUp { from { opacity: 0; transform: translateY(32px) scale(0.97) } to { opacity: 1; transform: translateY(0) scale(1) } }
-        @keyframes rzpSpin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
-        @keyframes rzpScaleIn { from { transform: scale(0.5); opacity: 0 } to { transform: scale(1); opacity: 1 } }
-        @keyframes rzpBounce { 0%, 80%, 100% { transform: scale(0) } 40% { transform: scale(1) } }
-        @keyframes rzpQrPulse { 0%, 100% { box-shadow: 0 0 12px rgba(51,149,255,0.2) } 50% { box-shadow: 0 0 28px rgba(51,149,255,0.5) } }
+        @keyframes rzpFadeIn   { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes rzpSlideUp  { from { opacity: 0; transform: translateY(24px) scale(0.98) } to { opacity: 1; transform: translateY(0) scale(1) } }
+        @keyframes rzpSpin     { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        @keyframes rzpScaleIn  { from { transform: scale(0.5); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+        @keyframes rzpBounce   { 0%, 80%, 100% { transform: scale(0) } 40% { transform: scale(1) } }
 
-        /* ── Responsive: mobile sidebar collapses to horizontal tabs ── */
+        /* ── Mobile: sidebar becomes horizontal tab bar ── */
         @media (max-width: 600px) {
-          .rzp-modal-root {
-            flex-direction: column !important;
-            max-height: calc(100vh - 32px) !important;
-          }
-          .rzp-sidebar {
-            width: 100% !important;
-            min-width: unset !important;
-            flex-direction: row !important;
-            border-right: none !important;
-            border-bottom: 1px solid #E8EEF8;
-            overflow-x: auto;
-            overflow-y: hidden !important;
-          }
+          .rzp-modal-root   { flex-direction: column !important; max-height: calc(100vh - 24px) !important; }
+          .rzp-sidebar      { width: 100% !important; min-width: unset !important; flex-direction: row !important; border-right: none !important; border-bottom: 1px solid #E8EEF8; overflow-x: auto; overflow-y: hidden !important; }
           .rzp-sidebar-header { display: none !important; }
-          .rzp-sidebar-methods {
-            display: flex !important;
-            flex-direction: row !important;
-            padding: 0 !important;
-            gap: 0;
-            flex: 1;
-          }
+          .rzp-sidebar-methods { display: flex !important; flex-direction: row !important; padding: 0 !important; flex: 1; }
           .rzp-sidebar-methods > p { display: none !important; }
-          .rzp-method-btn {
-            flex-direction: column !important;
-            gap: 4px !important;
-            padding: 10px 14px !important;
-            font-size: 11px !important;
-            border-left: none !important;
-            border-bottom: 3px solid transparent;
-            white-space: nowrap;
-          }
-          .rzp-method-btn[data-active="true"] {
-            border-bottom-color: #3395FF !important;
-            border-left: none !important;
-          }
+          .rzp-method-btn   { flex-direction: column !important; gap: 3px !important; padding: 8px 12px !important; font-size: 11px !important; border-left: none !important; border-bottom: 3px solid transparent; white-space: nowrap; }
+          .rzp-method-btn[data-active="true"] { border-bottom-color: #3395FF !important; border-left: none !important; }
           .rzp-sidebar-footer { display: none !important; }
         }
       `}</style>
-    </div>
+    </Overlay>
   );
 };
 
