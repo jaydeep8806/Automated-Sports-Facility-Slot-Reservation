@@ -46,15 +46,7 @@ export const AdminDashboard = () => {
   const [ordersLimit] = useState(10);
   const [ordersTotalPages, setOrdersTotalPages] = useState(1);
 
-  // Debounce search query
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setFilterSearch(searchVal);
-      setBookingsPage(1);
-      setOrdersPage(1);
-    }, 400);
-    return () => clearTimeout(handler);
-  }, [searchVal]);
+  // (no debounce — search filter only fires on button click or Enter)
 
   // Forms & Modal controls
   const [isAddMode, setIsAddMode] = useState(false);
@@ -190,6 +182,12 @@ export const AdminDashboard = () => {
     }
   }, [token, filterLocation, filterSearch, filterOrderStatus, filterPaymentStatus, filterDate, ordersPage, ordersLimit]);
 
+  const handleApplySearch = () => {
+    setFilterSearch(searchVal);
+    setBookingsPage(1);
+    setOrdersPage(1);
+  };
+
   const handleResetFilters = () => {
     setFilterLocation('all');
     setSearchVal('');
@@ -201,6 +199,7 @@ export const AdminDashboard = () => {
     setBookingsPage(1);
     setOrdersPage(1);
   };
+
 
   const openFoodItemForm = (item = null) => {
     setFoodItemForm(item || {});
@@ -633,17 +632,29 @@ export const AdminDashboard = () => {
                     )}
                   </div>
                   <div className="admin-filters-grid">
-                    {/* Search */}
+                    {/* Search — button-triggered only */}
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Search</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Name, ID, email, venue..."
-                        value={searchVal}
-                        onChange={e => setSearchVal(e.target.value)}
-                        style={{ fontSize: '0.85rem', padding: '9px 12px' }}
-                      />
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="Name, ID, email, venue..."
+                          value={searchVal}
+                          onChange={e => setSearchVal(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') handleApplySearch(); }}
+                          style={{ fontSize: '0.85rem', padding: '9px 12px', flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={handleApplySearch}
+                          title="Apply search"
+                          style={{ padding: '9px 14px', fontSize: '0.82rem', flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '5px' }}
+                        >
+                          🔍 Search
+                        </button>
+                      </div>
                     </div>
 
                     {/* Location Filter */}
