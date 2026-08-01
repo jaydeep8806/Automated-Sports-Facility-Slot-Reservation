@@ -678,10 +678,8 @@ const RazorpayModal = ({ totalPrice, merchantName, onSuccess, onClose }) => {
                 {/* Valid examples */}
                 <div style={{ background: '#F8FAFE', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', color: RZP.muted }}>
                   <p style={{ fontWeight: 600, marginBottom: '4px', color: RZP.text }}>Valid examples:</p>
-                  <p style={{ color: '#10B981' }}>✅ jaydeepbaldan@okaxis</p>
-                  <p style={{ color: '#10B981' }}>✅ sportslotuser@ybl</p>
-                  <p style={{ color: RZP.danger }}>❌ jaydeep123@ybl (numbers not allowed)</p>
-                  <p style={{ color: RZP.danger }}>❌ 123@okaxis (must start with letter)</p>
+                  <p style={{ color: '#10B981' }}>✅ name@okaxis</p>
+                  <p style={{ color: RZP.danger }}>❌ 123@ybl (numbers not allowed)</p>
                 </div>
 
                 <div style={{ background: '#EBF3FF', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', color: RZP.blue, display: 'flex', alignItems: 'center', gap: '8px' }}>
