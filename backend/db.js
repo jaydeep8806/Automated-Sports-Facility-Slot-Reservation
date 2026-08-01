@@ -133,141 +133,142 @@ export const initDb = async () => {
       WHERE email IN ('admin@sports.com', 'user@sports.com') AND (status != 'Verified' OR status IS NULL)
     `);
 
-    // 5. Seed default Facilities (9 grounds across Gujarat cities: Cricket, Tennis, and Pickleball)
+    // 5. Seed default Facilities — ONLY if table is empty (preserves admin edits)
     console.log('Checking and seeding default facilities...');
-    
-    // Clear out old facilities first to avoid leftover category types
-    await query("DELETE FROM facilities");
 
-    const defaultFacilities = [
-      {
-        name: 'Lords Arena Cricket Ground',
-        type: 'cricket',
-        location: 'Downtown Sports Complex, Ahmedabad',
-        price_per_hour: 1200.00,
-        images: ['/fac_cricket_1.jpg'],
-        description: 'A premium international-standard turf designed for both box cricket and full outfield matches. Equipped with high-intensity LED floodlights, professional-grade artificial turf, and a comfortable pavilion.',
-        amenities: ['Floodlights', 'Locker Room', 'Parking', 'Showers', 'Equipment Rental'],
-        open_time: '00:00:00',
-        close_time: '23:59:00',
-        slot_duration: 60,
-        status: 'active'
-      },
-      {
-        name: 'Sardar Patel Cricket Ground',
-        type: 'cricket',
-        location: 'Motera Stadium Road, Ahmedabad',
-        price_per_hour: 1500.00,
-        images: ['/fac_cricket_2.png'],
-        description: 'A professional cricket ground with a well-maintained clay pitch, turf outfield, and grand stand view. Suitable for club games and practice matches.',
-        amenities: ['Floodlights', 'Professional Pitch', 'Locker Room', 'Parking', 'Showers'],
-        open_time: '00:00:00',
-        close_time: '23:59:00',
-        slot_duration: 60,
-        status: 'active'
-      },
-      {
-        name: 'Rajkot King\'s Box Cricket',
-        type: 'cricket',
-        location: 'Kalawad Road, Rajkot',
-        price_per_hour: 800.00,
-        images: ['/fac_cricket_3.jpg'],
-        description: 'Premium box cricket court with seamless turf carpet, professional night lighting, and spectator seating.',
-        amenities: ['Floodlights', 'Nets', 'Parking', 'Drinking Water'],
-        open_time: '00:00:00',
-        close_time: '23:59:00',
-        slot_duration: 60,
-        status: 'active'
-      },
-      {
-        name: 'Wimbledon Tennis Arena',
-        type: 'tennis',
-        location: 'Adajan Main Road, Surat',
-        price_per_hour: 900.00,
-        images: ['/fac_tennis_1.jpg'],
-        description: 'A state-of-the-art synthetic hard tennis court with professional netting and surrounding fences. Perfect for coaching and friendly matches.',
-        amenities: ['Floodlights', 'Parking', 'Drinking Water', 'Restrooms'],
-        open_time: '00:00:00',
-        close_time: '23:59:00',
-        slot_duration: 60,
-        status: 'active'
-      },
-      {
-        name: 'Vadodara Tennis Academy',
-        type: 'tennis',
-        location: 'Akota Ring Road, Vadodara',
-        price_per_hour: 700.00,
-        images: ['/fac_tennis_2.jpg'],
-        description: 'High-quality indoor clay tennis courts. Fully ventilated and well-lit. Professional coaching available.',
-        amenities: ['Locker Room', 'Restrooms', 'Parking', 'Water Dispenser'],
-        open_time: '00:00:00',
-        close_time: '23:59:00',
-        slot_duration: 60,
-        status: 'active'
-      },
-      {
-        name: 'Bhavnagar Tennis Club',
-        type: 'tennis',
-        location: 'Sardar Nagar, Bhavnagar',
-        price_per_hour: 500.00,
-        images: ['/fac_tennis_3.jpg'],
-        description: 'Versatile outdoor tennis court with modern acrylic surface, night floodlights, and coaching staff.',
-        amenities: ['Night Lights', 'Restrooms', 'Parking', 'Drinking Water'],
-        open_time: '00:00:00',
-        close_time: '23:59:00',
-        slot_duration: 60,
-        status: 'active'
-      },
-      {
-        name: 'Ahmedabad Pickleball Hub',
-        type: 'pickleball',
-        location: 'Bopal, Ahmedabad',
-        price_per_hour: 600.00,
-        images: ['/fac_pickleball_1.jpg'],
-        description: 'A vibrant pickleball court with premium USAPA-approved surfaces. Perfect for the fastest growing sport in Gujarat.',
-        amenities: ['Paddle Rental', 'Parking', 'Drinking Water', 'Restrooms'],
-        open_time: '00:00:00',
-        close_time: '23:59:00',
-        slot_duration: 60,
-        status: 'active'
-      },
-      {
-        name: 'Surat Pickleball Club',
-        type: 'pickleball',
-        location: 'Dumas Road, Surat',
-        price_per_hour: 650.00,
-        images: ['/fac_pickleball_2.jpg'],
-        description: 'Dedicated indoor pickleball courts with professional lighting, equipment retail shop, and coaching.',
-        amenities: ['Air Conditioning', 'Equipment Store', 'Showers', 'Parking'],
-        open_time: '00:00:00',
-        close_time: '23:59:00',
-        slot_duration: 60,
-        status: 'active'
-      },
-      {
-        name: 'Gandhinagar Pickleball Court',
-        type: 'pickleball',
-        location: 'Sector 21, Gandhinagar',
-        price_per_hour: 550.00,
-        images: ['/fac_pickleball_3.jpg'],
-        description: 'Beautiful outdoor pickleball courts surrounded by greenery. Excellent lighting for night sessions.',
-        amenities: ['Floodlights', 'Parking', 'Restrooms', 'Water Dispenser'],
-        open_time: '00:00:00',
-        close_time: '23:59:00',
-        slot_duration: 60,
-        status: 'active'
+    const facilityCheck = await query('SELECT COUNT(*) FROM facilities');
+    if (parseInt(facilityCheck.rows[0].count) === 0) {
+      const defaultFacilities = [
+        {
+          name: 'Lords Arena Cricket Ground',
+          type: 'cricket',
+          location: 'Downtown Sports Complex, Ahmedabad',
+          price_per_hour: 1200.00,
+          images: ['/fac_cricket_1.jpg'],
+          description: 'A premium international-standard turf designed for both box cricket and full outfield matches. Equipped with high-intensity LED floodlights, professional-grade artificial turf, and a comfortable pavilion.',
+          amenities: ['Floodlights', 'Locker Room', 'Parking', 'Showers', 'Equipment Rental'],
+          open_time: '00:00:00',
+          close_time: '23:59:00',
+          slot_duration: 60,
+          status: 'active'
+        },
+        {
+          name: 'Sardar Patel Cricket Ground',
+          type: 'cricket',
+          location: 'Motera Stadium Road, Ahmedabad',
+          price_per_hour: 1500.00,
+          images: ['/fac_cricket_2.png'],
+          description: 'A professional cricket ground with a well-maintained clay pitch, turf outfield, and grand stand view. Suitable for club games and practice matches.',
+          amenities: ['Floodlights', 'Professional Pitch', 'Locker Room', 'Parking', 'Showers'],
+          open_time: '00:00:00',
+          close_time: '23:59:00',
+          slot_duration: 60,
+          status: 'active'
+        },
+        {
+          name: 'Rajkot King\'s Box Cricket',
+          type: 'cricket',
+          location: 'Kalawad Road, Rajkot',
+          price_per_hour: 800.00,
+          images: ['/fac_cricket_3.jpg'],
+          description: 'Premium box cricket court with seamless turf carpet, professional night lighting, and spectator seating.',
+          amenities: ['Floodlights', 'Nets', 'Parking', 'Drinking Water'],
+          open_time: '00:00:00',
+          close_time: '23:59:00',
+          slot_duration: 60,
+          status: 'active'
+        },
+        {
+          name: 'Wimbledon Tennis Arena',
+          type: 'tennis',
+          location: 'Adajan Main Road, Surat',
+          price_per_hour: 900.00,
+          images: ['/fac_tennis_1.jpg'],
+          description: 'A state-of-the-art synthetic hard tennis court with professional netting and surrounding fences. Perfect for coaching and friendly matches.',
+          amenities: ['Floodlights', 'Parking', 'Drinking Water', 'Restrooms'],
+          open_time: '00:00:00',
+          close_time: '23:59:00',
+          slot_duration: 60,
+          status: 'active'
+        },
+        {
+          name: 'Vadodara Tennis Academy',
+          type: 'tennis',
+          location: 'Akota Ring Road, Vadodara',
+          price_per_hour: 700.00,
+          images: ['/fac_tennis_3.jpg'],
+          description: 'High-quality indoor clay tennis courts. Fully ventilated and well-lit. Professional coaching available.',
+          amenities: ['Locker Room', 'Restrooms', 'Parking', 'Water Dispenser'],
+          open_time: '00:00:00',
+          close_time: '23:59:00',
+          slot_duration: 60,
+          status: 'active'
+        },
+        {
+          name: 'Bhavnagar Tennis Club',
+          type: 'tennis',
+          location: 'Sardar Nagar, Bhavnagar',
+          price_per_hour: 500.00,
+          images: ['/fac_tennis_3.jpg'],
+          description: 'Versatile outdoor tennis court with modern acrylic surface, night floodlights, and coaching staff.',
+          amenities: ['Night Lights', 'Restrooms', 'Parking', 'Drinking Water'],
+          open_time: '00:00:00',
+          close_time: '23:59:00',
+          slot_duration: 60,
+          status: 'active'
+        },
+        {
+          name: 'Ahmedabad Pickleball Hub',
+          type: 'pickleball',
+          location: 'Bopal, Ahmedabad',
+          price_per_hour: 600.00,
+          images: ['/fac_pickleball_1.jpg'],
+          description: 'A vibrant pickleball court with premium USAPA-approved surfaces. Perfect for the fastest growing sport in Gujarat.',
+          amenities: ['Paddle Rental', 'Parking', 'Drinking Water', 'Restrooms'],
+          open_time: '00:00:00',
+          close_time: '23:59:00',
+          slot_duration: 60,
+          status: 'active'
+        },
+        {
+          name: 'Surat Pickleball Club',
+          type: 'pickleball',
+          location: 'Dumas Road, Surat',
+          price_per_hour: 650.00,
+          images: ['/fac_pickleball_2.jpg'],
+          description: 'Dedicated indoor pickleball courts with professional lighting, equipment retail shop, and coaching.',
+          amenities: ['Air Conditioning', 'Equipment Store', 'Showers', 'Parking'],
+          open_time: '00:00:00',
+          close_time: '23:59:00',
+          slot_duration: 60,
+          status: 'active'
+        },
+        {
+          name: 'Gandhinagar Pickleball Court',
+          type: 'pickleball',
+          location: 'Sector 21, Gandhinagar',
+          price_per_hour: 550.00,
+          images: ['/fac_pickleball_3.jpg'],
+          description: 'Beautiful outdoor pickleball courts surrounded by greenery. Excellent lighting for night sessions.',
+          amenities: ['Floodlights', 'Parking', 'Restrooms', 'Water Dispenser'],
+          open_time: '00:00:00',
+          close_time: '23:59:00',
+          slot_duration: 60,
+          status: 'active'
+        }
+      ];
+
+      for (const f of defaultFacilities) {
+        console.log(`Seeding facility: ${f.name}`);
+        await query(`
+          INSERT INTO facilities (name, type, location, price_per_hour, images, description, amenities, open_time, close_time, slot_duration, status)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `, [f.name, f.type, f.location, f.price_per_hour, f.images, f.description, f.amenities, f.open_time, f.close_time, f.slot_duration, f.status]);
       }
-    ];
-
-    for (const f of defaultFacilities) {
-      console.log(`Seeding facility: ${f.name}`);
-      await query(`
-        INSERT INTO facilities (name, type, location, price_per_hour, images, description, amenities, open_time, close_time, slot_duration, status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      `, [f.name, f.type, f.location, f.price_per_hour, f.images, f.description, f.amenities, f.open_time, f.close_time, f.slot_duration, f.status]);
+      console.log('Seeded default facilities.');
+    } else {
+      console.log('Facilities already exist — skipping seed to preserve admin changes.');
     }
-
-    console.log('Seeded default facilities.');
 
     // ─── CANTEEN TABLES ───────────────────────────────────────────────────────
 
