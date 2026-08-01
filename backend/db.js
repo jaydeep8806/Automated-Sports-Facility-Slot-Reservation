@@ -399,36 +399,8 @@ export const initDb = async () => {
         );
       }
       console.log('Seeded new sports food items.');
-    } else {
-      // Refresh image URLs with best-matched high-quality images
-      const imageUpdates = [
-        { name: 'Mixed Fruit Bowl',      image_url: 'https://images.unsplash.com/photo-1519996529931-28324d5a630e?w=600&q=85&fit=crop' },
-        { name: 'Sprouts Salad',         image_url: 'https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=600&q=85&fit=crop' },
-        { name: 'Dry Fruits Mix',        image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=85&fit=crop' },
-        { name: 'Peanut Chikki',         image_url: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&q=85&fit=crop' },
-        { name: 'Protein Bar',           image_url: 'https://images.unsplash.com/photo-1622484211761-a79a23b90978?w=600&q=85&fit=crop' },
-        { name: 'Energy Bar',            image_url: 'https://images.unsplash.com/photo-1542691457-cbe4df041eb2?w=600&q=85&fit=crop' },
-        { name: 'Roasted Peanuts',       image_url: 'https://images.unsplash.com/photo-1567892320421-b67f0df36da4?w=600&q=85&fit=crop' },
-        { name: 'Roasted Makhana',       image_url: 'https://images.unsplash.com/photo-1606914501449-5a96b6ce24ca?w=600&q=85&fit=crop' },
-        { name: 'Mineral Water',         image_url: 'https://images.unsplash.com/photo-1616118132534-381148898bb4?w=600&q=85&fit=crop' },
-        { name: 'Coconut Water',         image_url: 'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=600&q=85&fit=crop' },
-        { name: 'Lemon Water',           image_url: 'https://images.unsplash.com/photo-1560508180-03f285f67ded?w=600&q=85&fit=crop' },
-        { name: 'Fresh Lime Soda',       image_url: 'https://images.unsplash.com/photo-1534353436294-0dbd4bdac845?w=600&q=85&fit=crop' },
-        { name: 'Glucose Drink',         image_url: 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=600&q=85&fit=crop' },
-        { name: 'ORS Drink',             image_url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=600&q=85&fit=crop' },
-        { name: 'Sports Energy Drink',   image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=85&fit=crop' },
-        { name: 'Fresh Orange Juice',    image_url: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=600&q=85&fit=crop' },
-        { name: 'Mixed Fruit Juice',     image_url: 'https://images.unsplash.com/photo-1622597467836-f3285f2131b8?w=600&q=85&fit=crop' },
-        { name: 'Masala Chai',           image_url: 'https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?w=600&q=85&fit=crop' },
-        { name: 'Green Tea',             image_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&q=85&fit=crop' },
-        { name: 'Black Coffee',          image_url: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?w=600&q=85&fit=crop' },
-        { name: 'Hot Coffee',            image_url: 'https://images.unsplash.com/photo-1497515114629-f71d768fd07c?w=600&q=85&fit=crop' }
-      ];
-      for (const u of imageUpdates) {
-        await query('UPDATE food_items SET image_url = $1 WHERE name = $2', [u.image_url, u.name]);
-      }
-      console.log('Refreshed sports food item images.');
     }
+    // NOTE: Do NOT overwrite image_url on restart — admin may have updated them via dashboard.
 
 
 
