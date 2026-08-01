@@ -50,11 +50,8 @@ export const initDb = async () => {
       } catch (e) {}
     }
 
-    // 0b. Drop and recreate canteen tables to load the fresh sports menu
-    await query(`DROP TABLE IF EXISTS food_orders CASCADE;`);
-    await query(`DROP TABLE IF EXISTS food_items CASCADE;`);
-    await query(`DROP TABLE IF EXISTS food_categories CASCADE;`);
-    console.log('Cleared old canteen tables to load new healthy sports menu.');
+    // 0b. Canteen tables are preserved across restarts to keep admin-edited data (images, prices, etc.)
+    // Tables will only be created if they don't already exist (see steps 6, 7, 8 below).
 
     // 1. Create Users Table
     await query(`
