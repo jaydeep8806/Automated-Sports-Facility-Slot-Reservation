@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Info, CalendarCheck2, ShieldAlert, Sparkles, Check } from 'lucide-react';
+import { MapPin, Info, CalendarCheck2, ShieldAlert, Sparkles, Check, Clock } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -46,6 +46,9 @@ export const FacilityDetail = () => {
   const [facility, setFacility] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Server time (IST) for 2-hour booking rule
+  const [serverTodayStr, setServerTodayStr] = useState('');
+
   // Date and Slots states
   const getTodayStr = () => {
     const today = new Date();
@@ -60,6 +63,25 @@ export const FacilityDetail = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // 0. Fetch server time on mount to determine today in IST
+  useEffect(() => {
+    const fetchServerTime = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/facilities/time`);
+        if (res.ok) {
+          const data = await res.json();
+          setServerTodayStr(data.istDateStr);
+          // Set selected date to server's IST today if it differs from local
+          setSelectedDate(data.istDateStr);
+        }
+      } catch {
+        // Fallback to local date
+        setServerTodayStr(getTodayStr());
+      }
+    };
+    fetchServerTime();
+  }, []);
 
   // 1. Fetch Facility Details
   useEffect(() => {
@@ -144,6 +166,9 @@ export const FacilityDetail = () => {
       </div>
     );
   }
+
+  const isToday = selectedDate === (serverTodayStr || getTodayStr());
+  const hasTooSoonSlots = isToday && slots.some(s => s.isTooSoon && !s.booked);
 
   return (
     <div className="container animate-fade-in" style={{ marginTop: '20px' }}>
@@ -230,16 +255,38 @@ export const FacilityDetail = () => {
             </h2>
 
             {/* Date Input */}
-            <div className="form-group" style={{ maxWidth: '300px', marginBottom: '32px' }}>
+            <div className="form-group" style={{ maxWidth: '300px', marginBottom: '24px' }}>
               <label className="form-label">Select Date</label>
               <input
                 type="date"
                 className="form-input"
                 value={selectedDate}
-                min={getTodayStr()}
+                min={serverTodayStr || getTodayStr()}
                 onChange={(e) => setSelectedDate(e.target.value)}
               />
             </div>
+
+            {/* 2-Hour Advance Notice Banner (Today only) */}
+            {isToday && (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: '10px',
+                background: 'rgba(245,158,11,0.08)',
+                border: '1px solid rgba(245,158,11,0.35)',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                marginBottom: '20px',
+                fontSize: '0.82rem',
+                color: 'var(--text-main)',
+              }}>
+                <Clock size={16} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '1px' }} />
+                <div>
+                  <strong style={{ color: '#f59e0b' }}>2-Hour Advance Booking Rule</strong>
+                  <p style={{ color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Bookings must be made at least <strong>2 hours before</strong> the slot starts. Slots within the next 2 hours are unavailable.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Slots Grid */}
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px' }}>Available Time Slots</h3>
@@ -263,73 +310,107 @@ export const FacilityDetail = () => {
                   let background = 'var(--bg-surface)';
                   let opacity = 1;
                   let textColor = 'var(--text-main)';
+                  let statusLabel = null;
+                  let statusColor = 'var(--primary)';
+                  let tooltipText = '';
 
                   if (slot.booked) {
                     cursor = 'not-allowed';
                     background = 'var(--danger-glow)';
                     border = '1px solid rgba(239, 68, 68, 0.2)';
                     textColor = 'var(--text-muted)';
+                    statusLabel = 'Booked';
+                    statusColor = 'var(--danger)';
                   } else if (slot.isPast) {
                     cursor = 'not-allowed';
                     background = 'var(--bg-surface)';
                     border = '1px solid var(--border)';
                     textColor = 'var(--text-muted)';
                     opacity = 0.45;
+                    statusLabel = 'Passed';
+                    statusColor = 'var(--text-dark)';
+                  } else if (slot.isTooSoon) {
+                    cursor = 'not-allowed';
+                    background = 'rgba(245,158,11,0.08)';
+                    border = '1px solid rgba(245,158,11,0.35)';
+                    textColor = 'var(--text-muted)';
+                    opacity = 0.75;
+                    statusLabel = 'Too Soon';
+                    statusColor = '#f59e0b';
+                    tooltipText = 'Bookings must be made at least 2 hours in advance.';
                   } else if (isSelected) {
                     background = 'var(--primary-glow)';
                     border = '2px solid var(--primary)';
                     textColor = 'var(--primary)';
+                    statusLabel = 'Selected';
+                    statusColor = 'var(--primary)';
+                  } else {
+                    statusLabel = 'Available';
+                    statusColor = 'var(--primary)';
                   }
 
                   return (
-                    <button
-                      key={index}
-                      className={`time-slot-btn ${isSelected ? 'selected' : ''}`}
-                      disabled={slot.booked || slot.isPast}
-                      onClick={() => {
-                        if (selectedSlots.some(s => s.startTime === slot.startTime)) {
-                          setSelectedSlots(selectedSlots.filter(s => s.startTime !== slot.startTime));
-                        } else {
-                          setSelectedSlots([...selectedSlots, slot]);
-                        }
-                      }}
-                      style={{
-                        padding: '16px 8px',
-                        borderRadius: 'var(--radius-md)',
-                        border,
-                        background,
-                        cursor,
-                        opacity,
-                        color: textColor,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                      }}
-                    >
-                      <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>{slot.startTime}</span>
-                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>to {slot.endTime}</span>
-
-                      {slot.booked && (
-                        <span style={{ fontSize: '0.65rem', color: 'var(--danger)', fontWeight: 600, marginTop: '2px' }}>Booked</span>
-                      )}
-                      {slot.isPast && (
-                        <span style={{ fontSize: '0.65rem', color: 'var(--text-dark)', fontWeight: 600, marginTop: '2px' }}>Passed</span>
-                      )}
-                      {!slot.booked && !slot.isPast && (
-                        <span style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: 600, marginTop: '2px' }}>Available</span>
-                      )}
-                    </button>
+                    <div key={index} style={{ position: 'relative' }} className="slot-wrapper">
+                      <button
+                        className={`time-slot-btn ${isSelected ? 'selected' : ''}`}
+                        disabled={slot.booked || slot.isPast || slot.isTooSoon}
+                        onClick={() => {
+                          if (selectedSlots.some(s => s.startTime === slot.startTime)) {
+                            setSelectedSlots(selectedSlots.filter(s => s.startTime !== slot.startTime));
+                          } else {
+                            setSelectedSlots([...selectedSlots, slot]);
+                          }
+                        }}
+                        title={tooltipText}
+                        style={{
+                          width: '100%',
+                          padding: '16px 8px',
+                          borderRadius: 'var(--radius-md)',
+                          border,
+                          background,
+                          cursor,
+                          opacity,
+                          color: textColor,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>{slot.startTime}</span>
+                        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>to {slot.endTime}</span>
+                        {statusLabel && (
+                          <span style={{ fontSize: '0.62rem', color: statusColor, fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                            {statusLabel}
+                          </span>
+                        )}
+                      </button>
+                    </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Legend */}
+            {slots.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '20px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--primary-glow)', border: '1.5px solid var(--primary)', display: 'inline-block' }} /> Available
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(245,158,11,0.15)', border: '1.5px solid rgba(245,158,11,0.5)', display: 'inline-block' }} /> Too Soon (2hr rule)
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--danger-glow)', border: '1.5px solid rgba(239,68,68,0.3)', display: 'inline-block' }} /> Booked
+                </span>
               </div>
             )}
           </div>
 
         </div>
 
-        {/* Right Side: Order summary (Sticks on desktop) */}
+        {/* Right Side: Order summary */}
         <div style={{ position: 'relative' }}>
           <div className="glass-card" style={{
             padding: '32px',
@@ -345,7 +426,6 @@ export const FacilityDetail = () => {
               Booking Details
             </h2>
 
-            {/* Selected Info Summary */}
             {selectedSlots.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
@@ -353,7 +433,6 @@ export const FacilityDetail = () => {
                   <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{selectedDate}</span>
                 </div>
 
-                {/* List Slots */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Selected Slots ({selectedSlots.length}):</span>
                   {selectedSlots.map((s, idx) => (
@@ -420,6 +499,10 @@ export const FacilityDetail = () => {
           .detail-layout {
             grid-template-columns: 2fr 1fr !important;
           }
+        }
+        @media (max-width: 480px) {
+          .detail-layout { gap: 20px !important; }
+          .glass-card { padding: 20px !important; }
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>

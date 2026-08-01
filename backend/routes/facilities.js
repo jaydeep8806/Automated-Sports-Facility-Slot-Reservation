@@ -4,6 +4,24 @@ import { auth, admin } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// @route   GET /api/facilities/time
+// @desc    Return current server time in IST (used by frontend for 2-hour booking rule)
+// @access  Public
+router.get('/time', (req, res) => {
+  // Server is configured with Asia/Kolkata timezone via pool.on('connect')
+  const now = new Date();
+  // Convert to IST offset (+5:30)
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset);
+  res.json({
+    serverTime: now.toISOString(),
+    istHours: ist.getUTCHours(),
+    istMinutes: ist.getUTCMinutes(),
+    istTotalMinutes: ist.getUTCHours() * 60 + ist.getUTCMinutes(),
+    istDateStr: `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, '0')}-${String(ist.getUTCDate()).padStart(2, '0')}`,
+  });
+});
+
 // Helper: Convert time string "HH:MM:SS" or "HH:MM" to minutes from midnight
 const timeToMinutes = (timeStr) => {
   if (!timeStr) return 0;
@@ -111,18 +129,21 @@ router.get('/:id/slots', async (req, res) => {
     const duration = parseInt(slot_duration, 10) || 60;
     
     const slots = [];
-    
-    // Check current local time (if date selected is today, we prevent booking past times)
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    // Use IST server time for accurate 2-hour advance booking rule
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const todayStr = `${istNow.getUTCFullYear()}-${String(istNow.getUTCMonth() + 1).padStart(2, '0')}-${String(istNow.getUTCDate()).padStart(2, '0')}`;
     const isToday = date === todayStr;
-    
+
     let currentMinutes = 0;
     if (isToday) {
-      const now = new Date();
-      // Keep in local user timezone offset (assuming local Node clock matches the user)
-      currentMinutes = now.getHours() * 60 + now.getMinutes();
+      currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
     }
+
+    // 2-hour advance booking buffer (120 minutes)
+    const ADVANCE_BUFFER_MINUTES = 120;
 
     for (let m = startMin; m + duration <= endMin; m += duration) {
       const slotStart = m;
@@ -131,12 +152,14 @@ router.get('/:id/slots', async (req, res) => {
       const startTimeStr = minutesToTime(slotStart);
       const endTimeStr = minutesToTime(slotEnd);
 
-      // Check if slot has already passed today
-      const isPast = isToday && slotStart <= currentMinutes;
+      // Slot is in the past (already passed)
+      const isPast = isToday && slotStart < currentMinutes;
+
+      // Slot is too soon — starts within the next 2 hours (but hasn't passed yet)
+      const isTooSoon = isToday && !isPast && slotStart < currentMinutes + ADVANCE_BUFFER_MINUTES;
 
       // Check overlap with any confirmed bookings
       const isBooked = confirmedBookings.some(booking => {
-        // Overlap logic: booking.start < slot.end AND booking.end > slot.start
         return booking.start < slotEnd && booking.end > slotStart;
       });
 
@@ -146,7 +169,8 @@ router.get('/:id/slots', async (req, res) => {
         price: parseFloat(price_per_hour),
         booked: isBooked,
         isPast: isPast,
-        available: !isBooked && !isPast
+        isTooSoon: isTooSoon,
+        available: !isBooked && !isPast && !isTooSoon,
       });
     }
 

@@ -1418,3 +1418,288 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
 
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+/* =========================================================
+   COMPREHENSIVE RESPONSIVE DESIGN SYSTEM
+   Breakpoints: 480px | 640px | 768px | 992px
+   ========================================================= */
+
+/* ─── Base: prevent horizontal scroll on all screens ─── */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* ─── Container padding per breakpoint ─── */
+@media (max-width: 992px) {
+  .container { padding-left: 20px; padding-right: 20px; }
+}
+@media (max-width: 640px) {
+  .container { padding-left: 14px; padding-right: 14px; }
+}
+@media (max-width: 480px) {
+  .container { padding-left: 12px; padding-right: 12px; }
+}
+
+/* ─── Cards ─── */
+@media (max-width: 640px) {
+  .glass-card { padding: 20px !important; border-radius: 12px !important; }
+}
+@media (max-width: 480px) {
+  .glass-card { padding: 16px !important; border-radius: 10px !important; }
+}
+
+/* ─── Page Titles ─── */
+@media (max-width: 640px) {
+  .page-title { font-size: 1.5rem !important; }
+  h1 { font-size: 1.6rem !important; }
+  h2 { font-size: 1.2rem !important; }
+}
+@media (max-width: 480px) {
+  .page-title { font-size: 1.3rem !important; }
+  h1 { font-size: 1.4rem !important; }
+}
+
+/* ─── Navbar ─── */
+@media (max-width: 768px) {
+  .navbar-inner { flex-wrap: wrap; gap: 8px; padding: 10px 16px; }
+  .nav-links { gap: 12px; }
+  .nav-links a { font-size: 0.82rem; }
+}
+@media (max-width: 480px) {
+  .nav-links { gap: 8px; }
+  .nav-links a { font-size: 0.78rem; padding: 4px 8px !important; }
+  .navbar-brand { font-size: 1rem !important; }
+}
+
+/* ─── Buttons ─── */
+@media (max-width: 480px) {
+  .btn { padding: 10px 16px !important; font-size: 0.85rem !important; }
+  .btn-primary, .btn-danger { min-width: unset !important; }
+}
+
+/* ─── Forms ─── */
+@media (max-width: 640px) {
+  .form-input { font-size: 15px !important; padding: 10px 12px !important; }
+  .form-label { font-size: 0.82rem !important; }
+  .form-group { margin-bottom: 14px !important; }
+}
+
+/* ─── Tables — horizontal scroll on mobile ─── */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+}
+@media (max-width: 768px) {
+  .admin-table, table {
+    min-width: 600px;
+  }
+  .admin-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    border-radius: 8px;
+  }
+}
+@media (max-width: 640px) {
+  .admin-table th, .admin-table td { padding: 10px 12px !important; font-size: 0.8rem !important; }
+}
+
+/* ─── Food / Canteen Grid ─── */
+@media (max-width: 640px) {
+  .food-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+@media (max-width: 400px) {
+  .food-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── Food Card ─── */
+@media (max-width: 640px) {
+  .food-card { border-radius: 12px !important; }
+  .food-card > div:last-child { padding: 10px 12px 12px !important; }
+  .food-img { height: 140px !important; }
+}
+@media (max-width: 480px) {
+  .food-img { height: 120px !important; }
+}
+
+/* ─── Canteen Checkout Layout ─── */
+@media (max-width: 900px) {
+  .checkout-canteen-layout { grid-template-columns: 1fr !important; }
+}
+
+/* ─── Cart Item Row ─── */
+@media (max-width: 480px) {
+  .cart-item-row { gap: 8px !important; }
+  .cart-item-row img { width: 44px !important; height: 44px !important; }
+}
+
+/* ─── Facility Detail Banner ─── */
+@media (max-width: 768px) {
+  .glass-card section div[style*="height: 350px"] { height: 220px !important; }
+}
+@media (max-width: 480px) {
+  /* Facility banner overlay text */
+  .facility-banner-overlay h1 { font-size: 1.4rem !important; }
+  .facility-banner-overlay { padding: 20px 16px !important; }
+}
+
+/* ─── Slots Grid ─── */
+@media (max-width: 480px) {
+  .time-slot-btn { padding: 12px 6px !important; }
+  .time-slot-btn span:first-child { font-size: 0.82rem !important; }
+}
+
+/* ─── Home Hero Section ─── */
+@media (max-width: 768px) {
+  .hero-section { padding: 60px 0 40px !important; }
+  .hero-title { font-size: 2.2rem !important; }
+  .hero-subtitle { font-size: 1rem !important; }
+  .hero-cta-group { flex-direction: column !important; gap: 10px !important; }
+  .hero-cta-group .btn { width: 100% !important; justify-content: center !important; }
+}
+@media (max-width: 480px) {
+  .hero-title { font-size: 1.7rem !important; }
+  .hero-section { padding: 40px 0 30px !important; }
+}
+
+/* ─── Facilities Page ─── */
+@media (max-width: 768px) {
+  .facilities-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+}
+@media (max-width: 500px) {
+  .facilities-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── Facility Card ─── */
+@media (max-width: 640px) {
+  .facility-card-img { height: 160px !important; }
+  .facility-card-body { padding: 14px !important; }
+  .facility-card-title { font-size: 1rem !important; }
+}
+
+/* ─── Admin Dashboard ─── */
+@media (max-width: 768px) {
+  /* Stats grid: 2 columns */
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  /* Tab bar: wrap and scroll */
+  .admin-tabs { overflow-x: auto; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; }
+  .admin-tabs button { white-space: nowrap; flex-shrink: 0; }
+  /* Filters: stack */
+  .admin-filters { flex-direction: column !important; gap: 10px !important; }
+  .admin-filters select, .admin-filters input { width: 100% !important; }
+}
+@media (max-width: 480px) {
+  /* Stats grid: 1 column on very small screens */
+  .admin-stats-grid { grid-template-columns: 1fr 1fr !important; }
+  .admin-stat-card { padding: 12px !important; gap: 8px !important; }
+  /* Tab text: smaller */
+  .admin-tabs button { font-size: 0.8rem !important; padding: 8px 12px !important; }
+  /* Form modal: full width */
+  .admin-modal { padding: 16px !important; }
+  .admin-modal h2 { font-size: 1.1rem !important; }
+}
+
+/* ─── Profile Page ─── */
+@media (max-width: 768px) {
+  .profile-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 480px) {
+  .profile-header { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
+  .profile-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .profile-tabs button { white-space: nowrap; flex-shrink: 0; }
+}
+
+/* ─── Payment Page ─── */
+@media (max-width: 768px) {
+  .payment-layout { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 480px) {
+  .payment-method-grid { grid-template-columns: 1fr 1fr !important; }
+  .payment-card { padding: 16px !important; }
+}
+
+/* ─── Modals (generic) ─── */
+@media (max-width: 640px) {
+  .modal-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    padding: 20px !important;
+    margin: 16px !important;
+  }
+  .modal-footer { flex-direction: column !important; gap: 8px !important; }
+  .modal-footer button { width: 100% !important; }
+}
+
+/* ─── Badges / Tags ─── */
+@media (max-width: 480px) {
+  .badge { font-size: 0.65rem !important; padding: 3px 8px !important; }
+  .amenity-tag { font-size: 0.75rem !important; padding: 6px 10px !important; }
+}
+
+/* ─── Booking History Cards (Profile) ─── */
+@media (max-width: 640px) {
+  .booking-card { flex-direction: column !important; gap: 12px !important; }
+  .booking-card-actions { width: 100% !important; display: flex !important; gap: 8px !important; }
+  .booking-card-actions button { flex: 1 !important; }
+}
+
+/* ─── Canteen Confirmation Page ─── */
+@media (max-width: 640px) {
+  .confirmation-layout { grid-template-columns: 1fr !important; }
+}
+
+/* ─── Quantity Controls ─── */
+@media (max-width: 480px) {
+  .qty-control { gap: 6px !important; }
+  .qty-btn { width: 28px !important; height: 28px !important; }
+}
+
+/* ─── Login / Register Pages ─── */
+@media (max-width: 640px) {
+  .auth-card { padding: 28px 20px !important; margin: 20px auto !important; }
+  .auth-card h1 { font-size: 1.4rem !important; }
+}
+@media (max-width: 480px) {
+  .auth-card { padding: 22px 16px !important; }
+}
+
+/* ─── Empty States ─── */
+@media (max-width: 480px) {
+  .empty-state { padding: 40px 16px !important; }
+  .empty-state svg { width: 48px !important; height: 48px !important; }
+}
+
+/* ─── Canteen Menu Cart Sidebar ─── */
+@media (max-width: 480px) {
+  .cart-sidebar {
+    width: 100vw !important;
+    right: 0 !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* ─── Misc utility overrides for small screens ─── */
+@media (max-width: 480px) {
+  .hide-on-mobile { display: none !important; }
+  .full-width-mobile { width: 100% !important; }
+  .text-center-mobile { text-align: center !important; }
+  .stack-mobile { flex-direction: column !important; }
+  .gap-sm-mobile { gap: 8px !important; }
+}
+
+
