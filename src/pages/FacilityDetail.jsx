@@ -5,7 +5,7 @@ import { MapPin, Info, CalendarCheck2, ShieldAlert, Sparkles, Check, Clock, Chev
 
 // ── Mini Calendar Component ──────────────────────────────────────────────────
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 const MiniCalendar = ({ value, minDateStr, onChange }) => {
   // Parse value (YYYY-MM-DD)
@@ -24,7 +24,7 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
   const selected = parseDate(value);
   const minDate = parseDate(minDateStr);
   // Normalize minDate to midnight for comparison
-  minDate.setHours(0,0,0,0);
+  minDate.setHours(0, 0, 0, 0);
 
   const [viewYear, setViewYear] = useState(selected.getFullYear());
   const [viewMonth, setViewMonth] = useState(selected.getMonth());
@@ -44,7 +44,7 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
   // Disable prev button if current view is already at or before minDate's month
   const canGoPrev = viewYear > minDate.getFullYear() || (viewYear === minDate.getFullYear() && viewMonth > minDate.getMonth());
 
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
 
   const cells = [];
   // Empty cells before first day
@@ -73,7 +73,7 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
           style={{
             background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px',
             color: '#fff', cursor: canGoPrev ? 'pointer' : 'not-allowed',
-            padding: '6px 8px', display:'flex', alignItems:'center',
+            padding: '6px 8px', display: 'flex', alignItems: 'center',
             opacity: canGoPrev ? 1 : 0.35, transition: 'opacity 0.2s'
           }}
           aria-label="Previous month"
@@ -88,7 +88,7 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
           style={{
             background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px',
             color: '#fff', cursor: 'pointer', padding: '6px 8px',
-            display:'flex', alignItems:'center', transition: 'opacity 0.2s'
+            display: 'flex', alignItems: 'center', transition: 'opacity 0.2s'
           }}
           aria-label="Next month"
         >
@@ -118,7 +118,7 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
         {cells.map((day, idx) => {
           if (!day) return <div key={`e-${idx}`} />;
           const thisDate = new Date(viewYear, viewMonth, day);
-          thisDate.setHours(0,0,0,0);
+          thisDate.setHours(0, 0, 0, 0);
           const disabled = thisDate < minDate;
           const isSelected = toStr(thisDate) === value;
           const isToday = toStr(thisDate) === toStr(today);
@@ -333,8 +333,8 @@ export const FacilityDetail = () => {
     <div className="container animate-fade-in" style={{ marginTop: '20px' }}>
 
       {/* Banner / Showcase */}
-      <section className="glass-card" style={{ overflow: 'hidden', padding: 0, border: '1px solid var(--card-border)', marginBottom: '40px' }}>
-        <div style={{ position: 'relative', height: '350px' }}>
+      <section className="glass-card" style={{ overflow: 'hidden', padding: 0, border: '1px solid var(--card-border)', marginBottom: '32px' }}>
+        <div style={{ position: 'relative', height: '320px' }}>
           <img
             src={getFacilityImage(facility.images, facility.type)}
             alt={facility.name}
@@ -350,7 +350,7 @@ export const FacilityDetail = () => {
             left: 0,
             right: 0,
             background: 'linear-gradient(to top, rgba(9, 13, 22, 0.95) 30%, rgba(9, 13, 22, 0))',
-            padding: '40px 32px',
+            padding: '36px 32px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'end',
@@ -358,10 +358,10 @@ export const FacilityDetail = () => {
             gap: '16px'
           }}>
             <div>
-              <span className="badge badge-success" style={{ marginBottom: '12px' }}>
+              <span className="badge badge-success" style={{ marginBottom: '10px' }}>
                 {facility.type === 'cricket' ? 'Cricket Ground' : facility.type === 'tennis' ? 'Tennis Court' : 'Pickleball Arena'}
               </span>
-              <h1 style={{ fontSize: '2.25rem', fontWeight: 800 }}>{facility.name}</h1>
+              <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>{facility.name}</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '6px' }}>
                 <MapPin size={16} style={{ color: 'var(--primary)' }} />
                 <span>{facility.location}</span>
@@ -375,85 +375,105 @@ export const FacilityDetail = () => {
         </div>
       </section>
 
-      {/* Main Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr',
-        gap: '32px'
-      }} className="detail-layout">
+      {/* Main Layout Rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }} className="detail-page-rows">
 
-        {/* Left Side: About & Booking */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        {/* ── FIRST ROW: Venue Profile (Left) | Venue Perks & Info (Right) (COMPACT & SMALL) ── */}
+        <div className="row-grid-equal">
+          {/* Left: Venue Profile Card (Compact & Small) */}
+          <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Info size={16} style={{ color: 'var(--primary)' }} />
+                Venue Profile
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: '1.4', margin: 0 }}>
+                {facility.description}
+              </p>
+            </div>
 
-          {/* Facility Details card */}
-          <div className="glass-card" style={{ padding: '32px' }}>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Info size={20} style={{ color: 'var(--primary)' }} />
-              Venue Profile
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', lineHeight: '1.6', marginBottom: '24px' }}>
-              {facility.description}
-            </p>
-
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px' }}>Key Amenities Available</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-              {facility.amenities && facility.amenities.map((amenity, idx) => (
-                <div key={idx} className="amenity-tag" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.875rem' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }}></div>
-                  <span>{amenity}</span>
-                </div>
-              ))}
+            <div>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '6px' }}>Key Amenities Available</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {facility.amenities && facility.amenities.map((amenity, idx) => (
+                  <div key={idx} className="amenity-tag" style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', fontSize: '0.78rem', borderRadius: '6px' }}>
+                    <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }}></div>
+                    <span>{amenity}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Slots Selector Card */}
-          <div className="glass-card" style={{ padding: '32px' }}>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CalendarCheck2 size={20} style={{ color: 'var(--primary)' }} />
-              Choose Reservation Timing
-            </h2>
+          {/* Right: Venue Perks & Information Card (Only Instant Booking & Live Slots) */}
+          <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', margin: 0 }}>
+              <Sparkles size={16} style={{ color: 'var(--primary)' }} />
+              Venue Perks & Information
+            </h3>
 
-            {/* Calendar Date Picker */}
-            <div style={{ marginBottom: '24px' }}>
-              <label className="form-label" style={{ display: 'block', marginBottom: '10px' }}>Select Date</label>
-              {/* Selected date display pill */}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: 'var(--primary-glow)', border: '1px solid var(--primary)',
-                borderRadius: '999px', padding: '6px 16px', marginBottom: '14px',
-                fontSize: '0.875rem', fontWeight: 700, color: 'var(--primary)'
-              }}>
-                <CalendarCheck2 size={14} />
-                {selectedDate
-                  ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'long', year:'numeric' })
-                  : 'No date selected'
-                }
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
+              <div style={{ background: 'var(--primary-glow)', border: '1px solid var(--primary)', padding: '8px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Check size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                <div>
+                  <strong style={{ display: 'block', color: 'var(--primary)', fontSize: '0.8rem', lineHeight: 1.2 }}>Instant Booking</strong>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>100% Confirmed</span>
+                </div>
               </div>
-              <div className="mini-cal-wrap">
-                <MiniCalendar
-                  value={selectedDate}
-                  minDateStr={serverTodayStr || getTodayStr()}
-                  onChange={(dateStr) => setSelectedDate(dateStr)}
-                />
+
+              <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', padding: '8px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={15} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                <div>
+                  <strong style={{ display: 'block', color: '#3b82f6', fontSize: '0.8rem', lineHeight: 1.2 }}>Live Slots</strong>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Real-time sync</span>
+                </div>
               </div>
             </div>
+
+            {/* Bottom Support Banner */}
+            <div style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              fontSize: '0.78rem',
+              color: 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px'
+            }}>
+              <span>Need help with slot booking or events?</span>
+              <strong style={{ color: 'var(--primary)', flexShrink: 0 }}>24/7 Support</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SECOND ROW: Reservation Timing (Left) | Calendar + Booking Details (Right) ── */}
+        <div className="row-grid-align-top">
+          {/* Left: Choose Reservation Timing Card (PROMINENT & SPACIOUS) */}
+          <div className="glass-card" style={{ padding: '36px' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <CalendarCheck2 size={22} style={{ color: 'var(--primary)' }} />
+              Choose Reservation Timing
+            </h2>
 
             {/* 2-Hour Advance Notice Banner (Today only) */}
             {isToday && (
               <div style={{
-                display: 'flex', alignItems: 'flex-start', gap: '10px',
+                display: 'flex', alignItems: 'flex-start', gap: '12px',
                 background: 'rgba(245,158,11,0.08)',
                 border: '1px solid rgba(245,158,11,0.35)',
-                borderRadius: '10px',
-                padding: '12px 16px',
-                marginBottom: '20px',
-                fontSize: '0.82rem',
+                borderRadius: '12px',
+                padding: '14px 18px',
+                marginBottom: '24px',
+                fontSize: '0.88rem',
                 color: 'var(--text-main)',
               }}>
-                <Clock size={16} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '1px' }} />
+                <Clock size={18} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <strong style={{ color: '#f59e0b' }}>2-Hour Advance Booking Rule</strong>
-                  <p style={{ color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <strong style={{ color: '#f59e0b', fontSize: '0.92rem' }}>2-Hour Advance Booking Rule</strong>
+                  <p style={{ color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.4 }}>
                     Bookings must be made at least <strong>2 hours before</strong> the slot starts. Slots within the next 2 hours are unavailable.
                   </p>
                 </div>
@@ -461,18 +481,19 @@ export const FacilityDetail = () => {
             )}
 
             {/* Slots Grid */}
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px' }}>Available Time Slots</h3>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '18px' }}>Available Time Slots</h3>
 
             {slotsLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
-                <div className="spinner" /></div>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '36px 0' }}>
+                <div className="spinner" />
+              </div>
             ) : slots.length === 0 ? (
               <p style={{ color: 'var(--text-dark)' }}>No operational hours configured for this venue.</p>
             ) : (
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                gap: '12px'
+                gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                gap: '14px'
               }}>
                 {slots.map((slot, index) => {
                   const isSelected = selectedSlots.some(s => s.startTime === slot.startTime);
@@ -536,7 +557,7 @@ export const FacilityDetail = () => {
                         title={tooltipText}
                         style={{
                           width: '100%',
-                          padding: '16px 8px',
+                          padding: '18px 10px',
                           borderRadius: 'var(--radius-md)',
                           border,
                           background,
@@ -550,10 +571,10 @@ export const FacilityDetail = () => {
                           gap: '6px',
                         }}
                       >
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>{slot.startTime}</span>
-                        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>to {slot.endTime}</span>
+                        <span style={{ fontSize: '1rem', fontWeight: 800 }}>{slot.startTime}</span>
+                        <span style={{ fontSize: '0.78rem', opacity: 0.65 }}>to {slot.endTime}</span>
                         {statusLabel && (
-                          <span style={{ fontSize: '0.62rem', color: statusColor, fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                          <span style={{ fontSize: '0.65rem', color: statusColor, fontWeight: 700, marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                             {statusLabel}
                           </span>
                         )}
@@ -566,124 +587,178 @@ export const FacilityDetail = () => {
 
             {/* Legend */}
             {slots.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '20px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '24px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--primary-glow)', border: '1.5px solid var(--primary)', display: 'inline-block' }} /> Available
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(245,158,11,0.15)', border: '1.5px solid rgba(245,158,11,0.5)', display: 'inline-block' }} /> Too Soon (2hr rule)
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--danger-glow)', border: '1.5px solid rgba(239,68,68,0.3)', display: 'inline-block' }} /> Booked
                 </span>
               </div>
             )}
           </div>
 
-        </div>
+          {/* Right Column Stack: Calendar + Booking Details below (COMPACT STACK) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-        {/* Right Side: Order summary */}
-        <div style={{ position: 'relative' }}>
-          <div className="glass-card" style={{
-            padding: '32px',
-            position: 'sticky',
-            top: '110px',
-            border: '1px solid var(--card-border)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '24px'
-          }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={18} style={{ color: 'var(--primary)' }} />
-              Booking Details
-            </h2>
-
-            {selectedSlots.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Selected Date:</span>
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{selectedDate}</span>
+            {/* Calendar Card (Compact Padding) */}
+            <div className="glass-card" style={{ padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '6px' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                  Select Date
+                </span>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  background: 'var(--primary-glow)', border: '1.5px solid var(--primary)',
+                  borderRadius: '999px', padding: '4px 12px',
+                  fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)'
+                }}>
+                  <CalendarCheck2 size={13} />
+                  {selectedDate
+                    ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+                    : 'No date selected'
+                  }
                 </div>
+              </div>
+              <MiniCalendar
+                value={selectedDate}
+                minDateStr={serverTodayStr || getTodayStr()}
+                onChange={(dateStr) => setSelectedDate(dateStr)}
+              />
+            </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Selected Slots ({selectedSlots.length}):</span>
-                  {selectedSlots.map((s, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', paddingLeft: '8px' }}>
-                      <span>• {s.startTime} – {s.endTime}</span>
-                      <span style={{ fontWeight: 600 }}>₹{parseFloat(s.price).toFixed(2)}</span>
+            {/* Booking Details Card (Extended Height to Match Left Card Bottom Exactly) */}
+            <div className="glass-card" style={{
+              padding: '28px 24px',
+              border: '1px solid var(--card-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px'
+            }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <Sparkles size={18} style={{ color: 'var(--primary)' }} />
+                Booking Details
+              </h2>
+
+              {selectedSlots.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Selected Date:</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{selectedDate}</span>
+                  </div>
+
+                  <div className="slots-scroll-container" style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '133px', overflowY: 'auto', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Selected Slots ({selectedSlots.length}):</span>
+                    {selectedSlots.map((s, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', paddingLeft: '6px' }}>
+                        <span>• {s.startTime} – {s.endTime}</span>
+                        <span style={{ fontWeight: 600 }}>₹{parseFloat(s.price).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Total Duration:</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      {selectedSlots.length * (facility.slot_duration / 60)} {selectedSlots.length * (facility.slot_duration / 60) === 1 ? 'hour' : 'hours'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Hourly Rate:</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>₹{parseFloat(facility.price_per_hour).toFixed(2)}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--border)', paddingBottom: '10px', marginTop: '2px' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 700 }}>Total Amount:</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)' }}>
+                      ₹{selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}
+                    </span>
+                  </div>
+
+                  {errorMessage && (
+                    <div className="badge-danger" style={{ display: 'flex', gap: '8px', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.82rem' }}>
+                      <ShieldAlert size={16} style={{ flexShrink: 0 }} />
+                      <span>{errorMessage}</span>
                     </div>
-                  ))}
+                  )}
+
+                  {successMessage && (
+                    <div className="badge-success" style={{ display: 'flex', gap: '8px', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.82rem' }}>
+                      <Check size={16} style={{ flexShrink: 0 }} />
+                      <span>{successMessage}</span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleProceedToPayment}
+                    className="btn btn-primary"
+                    style={{ width: '100%', padding: '13px', fontSize: '0.92rem' }}
+                  >
+                    Book Now (Proceed to Payment)
+                  </button>
                 </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Total Duration:</span>
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                    {selectedSlots.length * (facility.slot_duration / 60)} {selectedSlots.length * (facility.slot_duration / 60) === 1 ? 'hour' : 'hours'}
-                  </span>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  <p>Please select a date and one or more available time slots from the schedule list to view booking checkout details.</p>
                 </div>
+              )}
+            </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Hourly Rate:</span>
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>₹{parseFloat(facility.price_per_hour).toFixed(2)}</span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--border)', paddingBottom: '12px', marginTop: '8px' }}>
-                  <span style={{ fontSize: '1.05rem', fontWeight: 700 }}>Total Amount:</span>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>
-                    ₹{selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}
-                  </span>
-                </div>
-
-                {errorMessage && (
-                  <div className="badge-danger" style={{ display: 'flex', gap: '8px', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem' }}>
-                    <ShieldAlert size={16} style={{ flexShrink: 0 }} />
-                    <span>{errorMessage}</span>
-                  </div>
-                )}
-
-                {successMessage && (
-                  <div className="badge-success" style={{ display: 'flex', gap: '8px', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem' }}>
-                    <Check size={16} style={{ flexShrink: 0 }} />
-                    <span>{successMessage}</span>
-                  </div>
-                )}
-
-                <button
-                  onClick={handleProceedToPayment}
-                  className="btn btn-primary"
-                  style={{ width: '100%', padding: '14px' }}
-                >
-                  Book Now (Proceed to Payment)
-                </button>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
-                <p>Please select a date and one or more available time slots from the schedule list to view booking checkout details.</p>
-              </div>
-            )}
           </div>
         </div>
 
       </div>
 
-      <style>{`
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        /* ── Thin Custom Scrollbar for Selected Slots List ── */
+        .slots-scroll-container::-webkit-scrollbar {
+          width: 4px;
+        }
+        .slots-scroll-container::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 4px;
+        }
+        .slots-scroll-container::-webkit-scrollbar-thumb {
+          background: var(--primary);
+          border-radius: 4px;
+        }
+
+        /* ── Desktop Row Grids ── */
         @media (min-width: 992px) {
-          .detail-layout {
-            grid-template-columns: 2fr 1fr !important;
+          .row-grid-equal {
+            display: grid;
+            grid-template-columns: 1.8fr 1fr;
+            gap: 32px;
+            align-items: stretch;
+          }
+          .row-grid-align-top {
+            display: grid;
+            grid-template-columns: 1.8fr 1fr;
+            gap: 32px;
+            align-items: start;
           }
         }
+
+        /* ── Mobile / Tablet Layout (≤991px) ── */
+        @media (max-width: 991px) {
+          .row-grid-equal, .row-grid-align-top {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+          }
+        }
+
         @media (max-width: 480px) {
-          .detail-layout { gap: 20px !important; }
+          .detail-page-rows { gap: 20px !important; }
           .glass-card { padding: 20px !important; }
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Calendar responsive max-width */
-        .mini-cal-wrap { max-width: 360px; width: 100%; }
-        @media (max-width: 480px) {
-          .mini-cal-wrap { max-width: 100%; }
-        }
-      `}</style>
+      ` }} />
     </div>
   );
 };
