@@ -1,7 +1,165 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Info, CalendarCheck2, ShieldAlert, Sparkles, Check, Clock } from 'lucide-react';
+import { MapPin, Info, CalendarCheck2, ShieldAlert, Sparkles, Check, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+
+// ── Mini Calendar Component ──────────────────────────────────────────────────
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const MiniCalendar = ({ value, minDateStr, onChange }) => {
+  // Parse value (YYYY-MM-DD)
+  const parseDate = (str) => {
+    if (!str) return new Date();
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+  const toStr = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const selected = parseDate(value);
+  const minDate = parseDate(minDateStr);
+  // Normalize minDate to midnight for comparison
+  minDate.setHours(0,0,0,0);
+
+  const [viewYear, setViewYear] = useState(selected.getFullYear());
+  const [viewMonth, setViewMonth] = useState(selected.getMonth());
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  // Disable prev button if current view is already at or before minDate's month
+  const canGoPrev = viewYear > minDate.getFullYear() || (viewYear === minDate.getFullYear() && viewMonth > minDate.getMonth());
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const cells = [];
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  return (
+    <div style={{
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--card-border)',
+      borderRadius: '16px',
+      overflow: 'hidden',
+      userSelect: 'none',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.18)'
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 16px',
+        background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+        color: '#fff'
+      }}>
+        <button
+          onClick={prevMonth}
+          disabled={!canGoPrev}
+          style={{
+            background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px',
+            color: '#fff', cursor: canGoPrev ? 'pointer' : 'not-allowed',
+            padding: '6px 8px', display:'flex', alignItems:'center',
+            opacity: canGoPrev ? 1 : 0.35, transition: 'opacity 0.2s'
+          }}
+          aria-label="Previous month"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.01em' }}>
+          {MONTHS[viewMonth]} {viewYear}
+        </span>
+        <button
+          onClick={nextMonth}
+          style={{
+            background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px',
+            color: '#fff', cursor: 'pointer', padding: '6px 8px',
+            display:'flex', alignItems:'center', transition: 'opacity 0.2s'
+          }}
+          aria-label="Next month"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
+      {/* Day labels */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        padding: '10px 12px 4px',
+        gap: '2px'
+      }}>
+        {DAYS.map(d => (
+          <div key={d} style={{
+            textAlign: 'center', fontSize: '0.68rem', fontWeight: 700,
+            color: 'var(--text-muted)', textTransform: 'uppercase', padding: '4px 0'
+          }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Date cells */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        padding: '0 12px 14px', gap: '4px'
+      }}>
+        {cells.map((day, idx) => {
+          if (!day) return <div key={`e-${idx}`} />;
+          const thisDate = new Date(viewYear, viewMonth, day);
+          thisDate.setHours(0,0,0,0);
+          const disabled = thisDate < minDate;
+          const isSelected = toStr(thisDate) === value;
+          const isToday = toStr(thisDate) === toStr(today);
+
+          let bg = 'transparent';
+          let color = 'var(--text-main)';
+          let fontWeight = 500;
+          let border = '1px solid transparent';
+          let cursor = 'pointer';
+
+          if (disabled) {
+            color = 'var(--text-muted)'; cursor = 'not-allowed'; opacity = 0.35;
+          } else if (isSelected) {
+            bg = 'var(--primary)'; color = '#fff'; fontWeight = 800; border = '1px solid var(--primary)';
+          } else if (isToday) {
+            bg = 'var(--primary-glow)'; color = 'var(--primary)'; fontWeight = 700; border = '1px solid var(--primary)';
+          }
+
+          return (
+            <button
+              key={day}
+              disabled={disabled}
+              onClick={() => { if (!disabled) onChange(toStr(thisDate)); }}
+              style={{
+                background: bg, color, fontWeight, border, cursor,
+                borderRadius: '8px', padding: '8px 0',
+                fontSize: '0.82rem', textAlign: 'center',
+                opacity: disabled ? 0.35 : 1,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => { if (!disabled && !isSelected) e.currentTarget.style.background = 'var(--bg-elevated)'; }}
+              onMouseLeave={e => { if (!disabled && !isSelected) e.currentTarget.style.background = bg; }}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -254,16 +412,29 @@ export const FacilityDetail = () => {
               Choose Reservation Timing
             </h2>
 
-            {/* Date Input */}
-            <div className="form-group" style={{ maxWidth: '300px', marginBottom: '24px' }}>
-              <label className="form-label">Select Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={selectedDate}
-                min={serverTodayStr || getTodayStr()}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
+            {/* Calendar Date Picker */}
+            <div style={{ marginBottom: '24px' }}>
+              <label className="form-label" style={{ display: 'block', marginBottom: '10px' }}>Select Date</label>
+              {/* Selected date display pill */}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                background: 'var(--primary-glow)', border: '1px solid var(--primary)',
+                borderRadius: '999px', padding: '6px 16px', marginBottom: '14px',
+                fontSize: '0.875rem', fontWeight: 700, color: 'var(--primary)'
+              }}>
+                <CalendarCheck2 size={14} />
+                {selectedDate
+                  ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'long', year:'numeric' })
+                  : 'No date selected'
+                }
+              </div>
+              <div className="mini-cal-wrap">
+                <MiniCalendar
+                  value={selectedDate}
+                  minDateStr={serverTodayStr || getTodayStr()}
+                  onChange={(dateStr) => setSelectedDate(dateStr)}
+                />
+              </div>
             </div>
 
             {/* 2-Hour Advance Notice Banner (Today only) */}
@@ -505,6 +676,12 @@ export const FacilityDetail = () => {
           .glass-card { padding: 20px !important; }
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Calendar responsive max-width */
+        .mini-cal-wrap { max-width: 360px; width: 100%; }
+        @media (max-width: 480px) {
+          .mini-cal-wrap { max-width: 100%; }
+        }
       `}</style>
     </div>
   );
