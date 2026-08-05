@@ -13,23 +13,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS with support for development credentials
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'https://sportslot.onrender.com',
-  'https://automated-sports-facility-slot-reservation.onrender.com'
-];
-
+// Enable CORS with support for all client origins & live link deployments
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.onrender.com')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
@@ -57,8 +44,8 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await initDb();
-    app.listen(PORT, () => {
-      console.log(`Backend Server is listening on port ${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Backend Server is listening on port ${PORT} (0.0.0.0)`);
     });
   } catch (error) {
     console.error('Failed to initialize database. Server cannot start.', error);
