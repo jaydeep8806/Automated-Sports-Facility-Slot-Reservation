@@ -128,6 +128,7 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
           let fontWeight = 500;
           let border = '1px solid transparent';
           let cursor = 'pointer';
+          let opacity = 1;
 
           if (disabled) {
             color = 'var(--text-muted)'; cursor = 'not-allowed'; opacity = 0.35;
