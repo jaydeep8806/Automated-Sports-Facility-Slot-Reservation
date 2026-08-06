@@ -63,11 +63,17 @@ export const initDb = async () => {
         role VARCHAR(50) DEFAULT 'user',
         phone VARCHAR(50) NOT NULL,
         status VARCHAR(50) DEFAULT 'Unverified',
+        account_status VARCHAR(50) DEFAULT 'Active',
+        last_login TIMESTAMP,
         verification_otp VARCHAR(6),
         otp_expiry TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Ensure columns exist on existing DBs
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status VARCHAR(50) DEFAULT 'Active';`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;`);
 
     // 2. Create Facilities Table
     await query(`

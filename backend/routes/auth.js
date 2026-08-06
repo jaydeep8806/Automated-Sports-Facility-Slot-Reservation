@@ -91,6 +91,11 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials.' });
     }
 
+    // Check if account is blocked by admin
+    if (user.account_status === 'Blocked') {
+      return res.status(403).json({ message: 'Your account has been blocked by an administrator. Please contact support.' });
+    }
+
     // Check email verification status
     if (user.status !== 'Verified') {
       return res.status(401).json({
@@ -99,6 +104,9 @@ router.post('/login', async (req, res) => {
         email: user.email,
       });
     }
+
+    // Update last_login timestamp
+    await query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
     // Generate JWT
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -112,6 +120,7 @@ router.post('/login', async (req, res) => {
         role: user.role,
         phone: user.phone,
         status: user.status,
+        account_status: user.account_status || 'Active',
       },
     });
   } catch (err) {

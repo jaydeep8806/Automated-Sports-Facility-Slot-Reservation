@@ -7,6 +7,7 @@ import {
   CreditCard, QrCode, Landmark
 } from 'lucide-react';
 import RazorpayModal from '../components/RazorpayModal';
+import { Modal } from '../components/Modal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const API = API_BASE_URL + '/api/canteen';
@@ -24,6 +25,7 @@ export const CanteenCheckout = () => {
   const [error, setError] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showCanteenConfirmModal, setShowCanteenConfirmModal] = useState(false);
 
   if (cart.length === 0) {
     return (
@@ -271,7 +273,12 @@ export const CanteenCheckout = () => {
               </button>
             ) : (
               <button
-                onClick={handleCanteenPay}
+                onClick={() => {
+                  if (acknowledged) {
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+                    setShowCanteenConfirmModal(true);
+                  }
+                }}
                 className="btn btn-primary"
                 disabled={loading || !acknowledged}
                 style={{ width: '100%', padding: '14px', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
@@ -289,6 +296,82 @@ export const CanteenCheckout = () => {
           </div>
         </div>
       </div>
+
+      {/* Pay at Canteen Re-confirmation Modal */}
+      <Modal
+        isOpen={showCanteenConfirmModal}
+        onClose={() => setShowCanteenConfirmModal(false)}
+        title="🍔 Confirm Canteen Order (Pay at Counter)"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <p style={{ fontSize: '0.88rem', margin: 0, color: 'var(--text-muted)' }}>
+            Please review your order details before final submission:
+          </p>
+
+          <div style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            padding: '10px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            fontSize: '0.85rem'
+          }}>
+            <div><strong>🏟️ Facility:</strong> <span style={{ color: 'var(--text-muted)' }}>{facilityName || 'Sports Complex'}</span></div>
+            <div><strong>⏰ Delivery Timing:</strong> <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{deliveryTime === 'before' ? '⚡ Before the Match' : deliveryTime === 'during' ? '🎮 During the Match' : '🏁 After the Match'}</span></div>
+            <div><strong>💳 Payment Method:</strong> <span style={{ color: '#10b981', fontWeight: 600 }}>Pay at Canteen Counter</span></div>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '2px' }}>
+              <strong>📋 Selected Items ({cart.length}):</strong>
+              <ul style={{ margin: '4px 0 0', paddingLeft: '18px', color: 'var(--text-muted)', maxHeight: '110px', overflowY: 'auto' }}>
+                {cart.map((item, idx) => (
+                  <li key={idx}>
+                    {item.name} × {item.qty} — <strong style={{ color: 'var(--text-main)' }}>₹{(item.price * item.qty).toFixed(2)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '6px', marginTop: '2px', fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)', display: 'flex', justifyContent: 'space-between' }}>
+              <span>Total Payable at Counter:</span>
+              <span>₹{totalPrice.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div style={{
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.2)',
+            padding: '8px 10px',
+            borderRadius: '6px',
+            fontSize: '0.8rem',
+            color: 'var(--text-main)'
+          }}>
+            ⚠️ <strong>Re-confirmation:</strong> Food will be freshly prepared by canteen staff upon confirmation. Pay ₹{totalPrice.toFixed(2)} at the counter.
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setShowCanteenConfirmModal(false)}
+              style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+            >
+              ← Back / Edit Order
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setShowCanteenConfirmModal(false);
+                handleCanteenPay();
+              }}
+              disabled={loading}
+              style={{ fontWeight: 700, padding: '8px 16px', fontSize: '0.85rem' }}
+            >
+              {loading ? 'Placing Order...' : `🍔 YES, PLACE CONFIRMED ORDER`}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Razorpay-style Payment Modal */}
       {showModal && (

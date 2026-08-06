@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { 
@@ -11,11 +12,34 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const AdminDashboard = () => {
   const { token } = useAuth();
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
 
   // Core Data
   const [facilities, setFacilities] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Users Management States
+  const [usersList, setUsersList] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [totalUsersCount, setTotalUsersCount] = useState(0);
+  const [filterUserStatus, setFilterUserStatus] = useState('all');
+  const [userMsg, setUserMsg] = useState('');
+
+  // User Action Modals
+  const [viewUserModal, setViewUserModal] = useState(null);
+  const [editUserModal, setEditUserModal] = useState(null);
+  const [deleteUserModal, setDeleteUserModal] = useState(null);
+  const [deleteUserStep, setDeleteUserStep] = useState(1);
+  const [blockUserModal, setBlockUserModal] = useState(null);
+
+  // Edit User Form State
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserPhone, setEditUserPhone] = useState('');
+  const [editUserRole, setEditUserRole] = useState('user');
+  const [editUserAccountStatus, setEditUserAccountStatus] = useState('Active');
+  const [editUserLoading, setEditUserLoading] = useState(false);
 
   // Stats
   const [stats, setStats] = useState({
@@ -26,7 +50,15 @@ export const AdminDashboard = () => {
   });
 
   // UI Management tabs
-  const [activeTab, setActiveTab] = useState('facilities'); // 'facilities' or 'bookings'
+  const [activeTab, setActiveTab] = useState(tabParam || 'facilities');
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    } else {
+      setActiveTab('facilities');
+    }
+  }, [tabParam]);
   
   // Filtering States
   const [filterLocation, setFilterLocation] = useState('all');
@@ -95,8 +127,8 @@ export const AdminDashboard = () => {
   const [foodMsg, setFoodMsg] = useState('');
 
   // 1. Fetch data
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     setErrorMsg('');
     try {
       // Fetch facilities
@@ -136,14 +168,14 @@ export const AdminDashboard = () => {
 
     } catch (err) {
       console.error(err);
-      setErrorMsg('Failed to load administrative details.');
+      if (!isSilent) setErrorMsg('Failed to load administrative details.');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
-  const fetchCanteenData = async () => {
-    setCanteenLoading(true);
+  const fetchCanteenData = async (isSilent = false) => {
+    if (!isSilent) setCanteenLoading(true);
     try {
       const ordersUrl = new URL(API_BASE_URL + '/api/canteen/orders/all');
       ordersUrl.searchParams.append('location', filterLocation);
@@ -167,20 +199,148 @@ export const AdminDashboard = () => {
       }
       if (catsRes.ok) setCategories(await catsRes.json());
     } catch (err) { console.error(err); }
-    finally { setCanteenLoading(false); }
+    finally { if (!isSilent) setCanteenLoading(false); }
+  };
+
+  const fetchUsersData = async (isSilent = false) => {
+    if (!isSilent) setUsersLoading(true);
+    try {
+      const userUrl = new URL(API_BASE_URL + '/api/users/all');
+      if (filterSearch) userUrl.searchParams.append('search', filterSearch);
+      if (filterUserStatus !== 'all') userUrl.searchParams.append('status', filterUserStatus);
+      if (filterDate) userUrl.searchParams.append('date', filterDate);
+
+      const res = await fetch(userUrl.toString(), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUsersList(data.users || []);
+        setTotalUsersCount(data.totalUsers || 0);
+      }
+    } catch (err) {
+      console.error(err);
+      if (!isSilent) setErrorMsg('Failed to load user management details.');
+    } finally {
+      if (!isSilent) setUsersLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (token) {
-      fetchData();
-    }
-  }, [token, filterLocation, filterSearch, filterBookingStatus, filterDate, bookingsPage, bookingsLimit]);
+    if (!token) return;
 
-  useEffect(() => {
-    if (token) {
-      fetchCanteenData();
+    if (activeTab === 'users') {
+      fetchUsersData(false);
+    } else if (activeTab === 'canteen' || activeTab === 'food-orders') {
+      fetchCanteenData(false);
+    } else {
+      fetchData(false);
     }
-  }, [token, filterLocation, filterSearch, filterOrderStatus, filterPaymentStatus, filterDate, ordersPage, ordersLimit]);
+
+    // Auto-polling interval every 6 seconds for silent background real-time live synchronization
+    const liveInterval = setInterval(() => {
+      if (activeTab === 'users') {
+        fetchUsersData(true);
+      } else if (activeTab === 'canteen' || activeTab === 'food-orders') {
+        fetchCanteenData(true);
+      } else {
+        fetchData(true);
+      }
+    }, 6000);
+
+    return () => clearInterval(liveInterval);
+  }, [token, activeTab, filterLocation, filterSearch, filterBookingStatus, filterOrderStatus, filterPaymentStatus, filterUserStatus, filterDate, bookingsPage, bookingsLimit, ordersPage, ordersLimit]);
+
+  const triggerEditUser = (user) => {
+    setEditUserModal(user);
+    setEditUserName(user.name || '');
+    setEditUserPhone(user.phone || '');
+    setEditUserRole(user.role || 'user');
+    setEditUserAccountStatus(user.account_status || 'Active');
+    setTimeout(() => {
+      window.scrollTo({ top: 150, behavior: 'smooth' });
+    }, 50);
+  };
+
+  const triggerBlockUser = (user) => {
+    setBlockUserModal(user);
+  };
+
+  const triggerDeleteUser = (user) => {
+    setDeleteUserModal(user);
+    setDeleteUserStep(1);
+  };
+
+  const handleSaveUserEdit = async (e) => {
+    e.preventDefault();
+    if (!editUserModal) return;
+    setEditUserLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/users/${editUserModal.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: editUserName,
+          phone: editUserPhone,
+          role: editUserRole,
+          account_status: editUserAccountStatus
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setUserMsg('User credentials and status updated successfully! 🎉');
+      setEditUserModal(null);
+      fetchUsersData();
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to update user.');
+    } finally {
+      setEditUserLoading(false);
+    }
+  };
+
+  const handleToggleUserStatus = async () => {
+    if (!blockUserModal) return;
+    const user = blockUserModal;
+    const nextStatus = user.account_status === 'Blocked' ? 'Active' : 'Blocked';
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/users/${user.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ account_status: nextStatus })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setUserMsg(`User ${user.name} account status changed to ${nextStatus}.`);
+      setBlockUserModal(null);
+      fetchUsersData();
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to change user status.');
+    }
+  };
+
+  const handleDeleteUserConfirm = async () => {
+    if (!deleteUserModal) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/users/${deleteUserModal.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setUserMsg(`User ${deleteUserModal.name} permanently deleted from database.`);
+      setDeleteUserModal(null);
+      setDeleteUserStep(1);
+      fetchUsersData();
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to delete user.');
+    }
+  };
 
   const handleApplySearch = () => {
     setFilterSearch(searchVal);
@@ -416,10 +576,462 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Helper function to render User Modals
+  const renderUserModals = () => (
+    <>
+      {/* View User Details Modal */}
+      <Modal
+        isOpen={Boolean(viewUserModal)}
+        onClose={() => setViewUserModal(null)}
+        title="User Account Details & Security Information"
+      >
+        {viewUserModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+                color: '#fff', fontWeight: 800, fontSize: '1.2rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                {viewUserModal.name ? viewUserModal.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>{viewUserModal.name}</h3>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{viewUserModal.email}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem' }}>
+              <div><strong>Mobile:</strong> <span style={{ color: 'var(--text-muted)' }}>{viewUserModal.phone || 'N/A'}</span></div>
+              <div><strong>User Role:</strong> <span style={{ textTransform: 'capitalize', color: 'var(--primary)', fontWeight: 700 }}>{viewUserModal.role}</span></div>
+              <div><strong>Account Status:</strong> <span style={{ color: viewUserModal.account_status === 'Blocked' ? '#ef4444' : '#10b981', fontWeight: 700 }}>{viewUserModal.account_status || 'Active'}</span></div>
+              <div><strong>Email Status:</strong> <span style={{ color: 'var(--text-muted)' }}>{viewUserModal.email_status || 'Verified'}</span></div>
+              <div><strong>Registration Date:</strong> <span style={{ color: 'var(--text-muted)' }}>{new Date(viewUserModal.created_at).toLocaleString('en-IN')}</span></div>
+              <div><strong>Last Login:</strong> <span style={{ color: 'var(--text-muted)' }}>{viewUserModal.last_login ? new Date(viewUserModal.last_login).toLocaleString('en-IN') : 'Never'}</span></div>
+              <div><strong>Total Bookings:</strong> <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{viewUserModal.total_bookings}</span></div>
+              <div><strong>Total Food Orders:</strong> <span style={{ color: '#f59e0b', fontWeight: 700 }}>{viewUserModal.total_food_orders}</span></div>
+            </div>
+
+            {/* Password Storage Security Info */}
+            <div style={{ marginTop: '8px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                🔐 Password Storage (Hashed Value Only — Never Plain Text)
+              </label>
+              <div style={{
+                background: 'var(--bg-surface)',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                fontFamily: 'monospace',
+                fontSize: '0.78rem',
+                wordBreak: 'break-all',
+                color: 'var(--primary)'
+              }}>
+                {viewUserModal.password}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+              <button className="btn btn-secondary" onClick={() => setViewUserModal(null)}>Close</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit User Modal */}
+      <Modal
+        isOpen={Boolean(editUserModal)}
+        onClose={() => setEditUserModal(null)}
+        title={`Edit User: ${editUserModal?.name}`}
+      >
+        {editUserModal && (
+          <form onSubmit={handleSaveUserEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="form-group">
+              <label className="form-label">Full Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editUserName}
+                onChange={e => setEditUserName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Mobile Number</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editUserPhone}
+                onChange={e => setEditUserPhone(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">User Role</label>
+              <select
+                className="form-input"
+                value={editUserRole}
+                onChange={e => setEditUserRole(e.target.value)}
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Account Status</label>
+              <select
+                className="form-input"
+                value={editUserAccountStatus}
+                onChange={e => setEditUserAccountStatus(e.target.value)}
+              >
+                <option value="Active">Active</option>
+                <option value="Blocked">Blocked</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditUserModal(null)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={editUserLoading}>
+                {editUserLoading ? 'Saving...' : 'Save User Changes'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Block/Unblock Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(blockUserModal)}
+        onClose={() => setBlockUserModal(null)}
+        title="🚫 Confirm Account Status Change"
+      >
+        {blockUserModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ fontSize: '0.95rem', margin: 0 }}>
+              Are you sure you want to change account status for <strong>{blockUserModal.name}</strong> ({blockUserModal.email}) to 
+              <strong style={{ color: blockUserModal.account_status === 'Blocked' ? '#10b981' : '#ef4444', marginLeft: '6px' }}>
+                {blockUserModal.account_status === 'Blocked' ? 'ACTIVE' : 'BLOCKED'}
+              </strong>?
+            </p>
+            <div style={{
+              background: blockUserModal.account_status === 'Blocked' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${blockUserModal.account_status === 'Blocked' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+              padding: '12px', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-main)'
+            }}>
+              {blockUserModal.account_status === 'Blocked'
+                ? '🟢 Unblocking will restore full access for this player to log in and reserve slots.'
+                : '⚠️ Blocking will immediately restrict this player from logging in or reserving slots.'}
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <button className="btn btn-secondary" onClick={() => setBlockUserModal(null)}>Cancel</button>
+              <button
+                className={`btn ${blockUserModal.account_status === 'Blocked' ? 'btn-primary' : 'btn-danger'}`}
+                onClick={handleToggleUserStatus}
+              >
+                {blockUserModal.account_status === 'Blocked' ? 'Confirm Unblock' : 'Confirm Block User'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete User Modal with 2-Step Repeat Confirmation */}
+      <Modal
+        isOpen={Boolean(deleteUserModal)}
+        onClose={() => { setDeleteUserModal(null); setDeleteUserStep(1); }}
+        title={deleteUserStep === 1 ? "⚠️ Confirm User Deletion (Step 1 of 2)" : "🚨 REPEAT CHECK: Final Confirmation (Step 2 of 2)"}
+      >
+        {deleteUserModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {deleteUserStep === 1 ? (
+              <>
+                <p style={{ fontSize: '0.95rem', margin: 0 }}>
+                  Are you sure you want to delete user account <strong>{deleteUserModal.name}</strong> ({deleteUserModal.email})?
+                </p>
+                <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--danger)' }}>
+                  ⚠️ Step 1: Deleting a user account will erase all user profile data, active bookings, and food order records.
+                </div>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                  <button className="btn btn-secondary" onClick={() => setDeleteUserModal(null)}>Cancel</button>
+                  <button className="btn btn-danger" onClick={() => setDeleteUserStep(2)}>
+                    Proceed to Final Confirmation ➔
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  background: 'rgba(239,68,68,0.12)', border: '2px dashed #ef4444',
+                  padding: '16px', borderRadius: '10px', textAlign: 'center'
+                }}>
+                  <span style={{ fontSize: '1.8rem', display: 'block', marginBottom: '4px' }}>🚨</span>
+                  <h4 style={{ color: '#ef4444', fontWeight: 800, margin: '0 0 6px' }}>FINAL REPEAT CONFIRMATION</h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', margin: 0 }}>
+                    Are you 100% sure you want to <strong>PERMANENTLY DELETE</strong> account for <strong>{deleteUserModal.name}</strong>?
+                  </p>
+                </div>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>
+                  This action is permanent and cannot be undone under any circumstances.
+                </p>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '8px' }}>
+                  <button className="btn btn-secondary" onClick={() => setDeleteUserStep(1)}>← Back</button>
+                  <button className="btn btn-danger" onClick={handleDeleteUserConfirm} style={{ fontWeight: 800, padding: '10px 20px' }}>
+                    🔴 YES, PERMANENTLY DELETE NOW
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
+    </>
+  );
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
         <div style={{ width: '40px', height: '40px', border: '3px solid var(--card-border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      </div>
+    );
+  }
+
+  // Standalone DEDICATED User Management Page when activeTab === 'users'
+  if (activeTab === 'users') {
+    return (
+      <div className="container animate-fade-in" style={{ marginTop: '20px' }}>
+        {/* User Management Header */}
+        <div className="admin-page-header" style={{ marginBottom: '24px' }}>
+          <div>
+            <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Users size={30} style={{ color: 'var(--primary)' }} />
+              User Management
+            </h1>
+            <p style={{ color: 'var(--text-muted)', marginTop: '4px', fontSize: '0.9rem' }}>
+              Control panel for viewing, managing, editing, and auditing all registered user accounts.
+            </p>
+          </div>
+          <button 
+            className="btn btn-secondary" 
+            onClick={fetchUsersData}
+            style={{ padding: '9px 16px', fontSize: '0.85rem', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RefreshCw size={15} /> Refresh Users
+          </button>
+        </div>
+
+        {/* Total Registered Users Stat Card */}
+        <div className="admin-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', marginBottom: '24px' }}>
+          <div className="glass-card admin-stat-card" style={{ borderLeft: '4px solid var(--primary)' }}>
+            <div className="stat-icon" style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--primary)', borderRadius: 'var(--radius-md)', flexShrink: 0 }}>
+              <Users size={26} />
+            </div>
+            <div>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Registered Users</span>
+              <p className="stat-value" style={{ fontSize: '1.85rem', fontWeight: 800, lineHeight: 1.1, margin: '2px 0 0' }}>{totalUsersCount}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Search & Filters Panel */}
+        <div className="glass-card animate-fade-in" style={{ padding: '18px 20px', marginBottom: '24px', border: '1px solid var(--card-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Settings size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+              <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)' }}>Search & Filters</span>
+            </div>
+            {(filterSearch || filterUserStatus !== 'all' || filterDate) && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px' }}
+              >
+                <X size={12} /> Clear Filters
+              </button>
+            )}
+          </div>
+
+          <div className="admin-filters-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Search User</label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Search by Name, Email, Phone..."
+                  value={searchVal}
+                  onChange={e => setSearchVal(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleApplySearch(); }}
+                  style={{ fontSize: '0.85rem', padding: '9px 12px', flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleApplySearch}
+                  style={{ padding: '9px 14px', fontSize: '0.82rem', flexShrink: 0 }}
+                >
+                  🔍 Search
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Account Status</label>
+              <select
+                className="form-input"
+                value={filterUserStatus}
+                onChange={e => setFilterUserStatus(e.target.value)}
+                style={{ fontSize: '0.85rem', padding: '9px 12px', background: 'var(--bg-surface)' }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="Active">Active Users</option>
+                <option value="Blocked">Blocked Users</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Registration Date</label>
+              <input
+                type="date"
+                className="form-input"
+                value={filterDate}
+                onChange={e => setFilterDate(e.target.value)}
+                style={{ fontSize: '0.85rem', padding: '8px 12px' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* User Table & Actions */}
+        {userMsg && (
+          <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981', fontSize: '0.85rem', fontWeight: 600, marginBottom: '16px' }}>
+            {userMsg}
+          </div>
+        )}
+
+        {usersLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}><div className="spinner" /></div>
+        ) : usersList.length === 0 ? (
+          <div className="glass-card admin-empty-state" style={{ padding: '50px 20px', textAlign: 'center' }}>
+            <Users size={40} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+            <p style={{ color: 'var(--text-muted)' }}>No registered users found matching the selected search criteria or filters.</p>
+          </div>
+        ) : (
+          <div className="glass-card" style={{ overflowX: 'auto', border: '1px solid var(--card-border)', padding: '16px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '950px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  <th style={{ padding: '10px' }}>User Details</th>
+                  <th style={{ padding: '10px' }}>Mobile Number</th>
+                  <th style={{ padding: '10px' }}>Role</th>
+                  <th style={{ padding: '10px' }}>Status</th>
+                  <th style={{ padding: '10px' }}>Registration Date</th>
+                  <th style={{ padding: '10px' }}>Last Login</th>
+                  <th style={{ padding: '10px' }}>Activity Log</th>
+                  <th style={{ padding: '10px', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody style={{ fontSize: '0.875rem' }}>
+                {usersList.map((u) => (
+                  <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', verticalAlign: 'middle' }}>
+                    <td style={{ padding: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '38px', height: '38px', borderRadius: '50%',
+                          background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+                          color: '#fff', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.95rem', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                        }}>
+                          {u.name ? u.name.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{u.name}</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{u.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {u.phone || 'N/A'}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <span style={{
+                        padding: '3px 10px', borderRadius: '999px',
+                        background: u.role === 'admin' ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.06)',
+                        color: u.role === 'admin' ? 'var(--primary)' : 'var(--text-muted)',
+                        fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase'
+                      }}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <span style={{
+                        padding: '3px 10px', borderRadius: '999px',
+                        background: u.account_status === 'Blocked' ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
+                        color: u.account_status === 'Blocked' ? '#ef4444' : '#10b981',
+                        fontSize: '0.75rem', fontWeight: 700
+                      }}>
+                        {u.account_status || 'Active'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      {u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      {u.last_login ? new Date(u.last_login).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Never'}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.82rem' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{u.total_bookings}</span> Bookings &nbsp;·&nbsp; 
+                      <span style={{ fontWeight: 700, color: '#f59e0b' }}> {u.total_food_orders}</span> Orders
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => setViewUserModal(u)}
+                          title="View User Details & Security Hash"
+                          style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                        >
+                          👁️ View
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => triggerEditUser(u)}
+                          title="Edit User"
+                          style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                        >
+                          <Edit size={13} />
+                        </button>
+                        <button
+                          className={`btn ${u.account_status === 'Blocked' ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => triggerBlockUser(u)}
+                          title={u.account_status === 'Blocked' ? 'Unblock User' : 'Block User'}
+                          style={{ padding: '6px 10px', fontSize: '0.78rem', color: u.account_status === 'Blocked' ? undefined : '#ef4444' }}
+                        >
+                          {u.account_status === 'Blocked' ? '🟢 Unblock' : '🚫 Block'}
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => triggerDeleteUser(u)}
+                          title="Delete User"
+                          style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* View, Edit, Delete Modals */}
+        {renderUserModals()}
+
       </div>
     );
   }
@@ -1145,6 +1757,9 @@ export const AdminDashboard = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Render User Action Modals (View, Edit, Delete) */}
+      {renderUserModals()}
 
     </div>
   );
