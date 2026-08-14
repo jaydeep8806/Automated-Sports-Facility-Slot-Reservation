@@ -312,4 +312,210 @@ router.put('/:id/cancel', auth, async (req, res) => {
   }
 });
 
+// Helper: Format minutes from midnight to "HH:MM:SS"
+const minutesToTime = (totalMinutes) => {
+  if (totalMinutes >= 1440) return '23:59:59';
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+};
+
+// @route   GET /api/bookings/:id/check-extension
+// @desc    Check if an active booking can be extended to the next consecutive slot
+// @access  Private
+router.get('/:id/check-extension', auth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  const userRole = req.user.role;
+
+  try {
+    const bookingRes = await query(
+      `SELECT b.*, f.name AS facility_name, f.price_per_hour, f.close_time, f.open_time, f.slot_duration 
+       FROM bookings b
+       JOIN facilities f ON b.facility_id = f.id
+       WHERE b.id = $1`,
+      [id]
+    );
+
+    if (bookingRes.rows.length === 0) {
+      return res.status(404).json({ message: 'Booking not found.' });
+    }
+
+    const booking = bookingRes.rows[0];
+
+    // Authorization Check (User owns booking, or is admin)
+    if (booking.user_id !== userId && userRole !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to extend this booking.' });
+    }
+
+    if (booking.status !== 'confirmed') {
+      return res.json({ canExtend: false, reason: 'Booking is not active.' });
+    }
+
+    // Time Check (IST Server Time)
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const todayStr = `${istNow.getUTCFullYear()}-${String(istNow.getUTCMonth() + 1).padStart(2, '0')}-${String(istNow.getUTCDate()).padStart(2, '0')}`;
+    const bookingDateStr = formatToYYYYMMDD(booking.date);
+
+    if (bookingDateStr !== todayStr) {
+      return res.json({ canExtend: false, reason: 'Extensions are only available for active bookings today.' });
+    }
+
+    const currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
+    const startMin = timeToMinutes(booking.start_time);
+    const endMin = timeToMinutes(booking.end_time);
+
+    // Must be currently playing (start_time <= currentMinutes < end_time)
+    if (currentMinutes < startMin || currentMinutes >= endMin) {
+      return res.json({ canExtend: false, reason: 'Extensions can only be made while your booking is currently in progress.' });
+    }
+
+    // Determine immediately next slot
+    const slotDuration = parseInt(booking.slot_duration, 10) || 60;
+    const nextStartMin = endMin;
+    const nextEndMin = nextStartMin + slotDuration;
+
+    const rawCloseMin = timeToMinutes(booking.close_time);
+    const closeMin = (rawCloseMin === 1439 || rawCloseMin === 23 * 60 + 59) ? 1440 : rawCloseMin;
+
+    if (nextEndMin > closeMin) {
+      return res.json({ canExtend: false, reason: 'Facility is closing. Next slot is unavailable.' });
+    }
+
+    const nextStartTimeStr = minutesToTime(nextStartMin);
+    const nextEndTimeStr = minutesToTime(nextEndMin);
+
+    // Check overlap with any existing confirmed booking (ignoring 2-hour buffer rule)
+    const conflictRes = await query(
+      `SELECT * FROM bookings 
+       WHERE facility_id = $1 
+         AND date = $2 
+         AND status = 'confirmed' 
+         AND id != $3
+         AND (start_time < $5 AND end_time > $4)`,
+      [booking.facility_id, bookingDateStr, booking.id, nextStartTimeStr, nextEndTimeStr]
+    );
+
+    if (conflictRes.rows.length > 0) {
+      return res.json({ canExtend: false, reason: 'The next consecutive slot is already booked.' });
+    }
+
+    const price = parseFloat(booking.price_per_hour);
+
+    return res.json({
+      canExtend: true,
+      nextSlot: {
+        startTime: nextStartTimeStr.slice(0, 5),
+        endTime: nextEndTimeStr.slice(0, 5),
+        price: price
+      }
+    });
+
+  } catch (err) {
+    console.error('Check extension error:', err);
+    res.status(500).json({ message: 'Server error checking extension status.' });
+  }
+});
+
+// @route   POST /api/bookings/:id/extend
+// @desc    Extend an active booking with payment confirmation
+// @access  Private
+router.post('/:id/extend', auth, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  const userRole = req.user.role;
+
+  try {
+    const bookingRes = await query(
+      `SELECT b.*, f.name AS facility_name, f.price_per_hour, f.close_time, f.open_time, f.slot_duration 
+       FROM bookings b
+       JOIN facilities f ON b.facility_id = f.id
+       WHERE b.id = $1`,
+      [id]
+    );
+
+    if (bookingRes.rows.length === 0) {
+      return res.status(404).json({ message: 'Booking not found.' });
+    }
+
+    const booking = bookingRes.rows[0];
+
+    if (booking.user_id !== userId && userRole !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to extend this booking.' });
+    }
+
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ message: 'Booking is not active.' });
+    }
+
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const todayStr = `${istNow.getUTCFullYear()}-${String(istNow.getUTCMonth() + 1).padStart(2, '0')}-${String(istNow.getUTCDate()).padStart(2, '0')}`;
+    const bookingDateStr = formatToYYYYMMDD(booking.date);
+
+    if (bookingDateStr !== todayStr) {
+      return res.status(400).json({ message: 'Extensions are only available for current active bookings today.' });
+    }
+
+    const currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
+    const startMin = timeToMinutes(booking.start_time);
+    const endMin = timeToMinutes(booking.end_time);
+
+    if (currentMinutes < startMin || currentMinutes >= endMin) {
+      return res.status(400).json({ message: 'Extensions can only be made while your booking is currently in progress.' });
+    }
+
+    const slotDuration = parseInt(booking.slot_duration, 10) || 60;
+    const nextStartMin = endMin;
+    const nextEndMin = nextStartMin + slotDuration;
+
+    const rawCloseMin = timeToMinutes(booking.close_time);
+    const closeMin = (rawCloseMin === 1439 || rawCloseMin === 23 * 60 + 59) ? 1440 : rawCloseMin;
+
+    if (nextEndMin > closeMin) {
+      return res.status(400).json({ message: 'Facility is closing. Next slot is unavailable.' });
+    }
+
+    const nextStartTimeStr = minutesToTime(nextStartMin);
+    const nextEndTimeStr = minutesToTime(nextEndMin);
+
+    const conflictRes = await query(
+      `SELECT * FROM bookings 
+       WHERE facility_id = $1 
+         AND date = $2 
+         AND status = 'confirmed' 
+         AND id != $3
+         AND (start_time < $5 AND end_time > $4)`,
+      [booking.facility_id, bookingDateStr, booking.id, nextStartTimeStr, nextEndTimeStr]
+    );
+
+    if (conflictRes.rows.length > 0) {
+      return res.status(400).json({ message: 'The next consecutive slot is already booked.' });
+    }
+
+    const additionalPrice = parseFloat(booking.price_per_hour);
+
+    // Update existing booking with extended duration and updated total price
+    const updateRes = await query(
+      `UPDATE bookings 
+       SET end_time = $1, total_price = total_price + $2 
+       WHERE id = $3 
+       RETURNING *`,
+      [nextEndTimeStr, additionalPrice, booking.id]
+    );
+
+    res.json({
+      message: 'Booking extended successfully!',
+      booking: updateRes.rows[0]
+    });
+
+  } catch (err) {
+    console.error('Extend booking error:', err);
+    res.status(500).json({ message: 'Server error processing booking extension.' });
+  }
+});
+
 export default router;

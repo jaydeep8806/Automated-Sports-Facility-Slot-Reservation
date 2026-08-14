@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
-import { User, Phone, Mail, Lock, History, ClipboardCheck, Trash2, ShieldAlert, Check, UtensilsCrossed, AlertCircle } from 'lucide-react';
+import RazorpayModal from '../components/RazorpayModal';
+import { User, Phone, Mail, Lock, History, ClipboardCheck, Trash2, ShieldAlert, Check, UtensilsCrossed, AlertCircle, Clock, Sparkles } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -47,6 +48,15 @@ export const Profile = () => {
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('active'); // 'active', 'history', 'food'
 
+  // Extend Booking states
+  const [extensionStatus, setExtensionStatus] = useState({});
+  const [extendModalOpen, setExtendModalOpen] = useState(false);
+  const [bookingToExtend, setBookingToExtend] = useState(null);
+  const [extensionDetails, setExtensionDetails] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [extendLoading, setExtendLoading] = useState(false);
+  const [extendError, setExtendError] = useState('');
+
   // Food Orders states
   const [foodOrders, setFoodOrders] = useState([]);
   const [foodOrdersLoading, setFoodOrdersLoading] = useState(false);
@@ -74,6 +84,30 @@ export const Profile = () => {
   const [phoneError, setPhoneError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  // Helper to check extension status for currently active playing bookings
+  const checkExtensionsForActiveBookings = async (bookingsList) => {
+    const activePlayingBookings = bookingsList.filter(b => {
+      const bDateStr = formatDateToLocalYYYYMMDD(b.date);
+      const startMin = timeToMinutes(b.start_time);
+      const endMin = timeToMinutes(b.end_time);
+      return b.status === 'confirmed' && bDateStr === todayStr && startMin <= currentMinutes && currentMinutes < endMin;
+    });
+
+    for (const b of activePlayingBookings) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/bookings/${b.id}/check-extension`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setExtensionStatus(prev => ({ ...prev, [b.id]: data }));
+        }
+      } catch (err) {
+        console.error('Check extension status error:', err);
+      }
+    }
+  };
+
   // 1. Fetch user bookings
   const fetchMyBookings = async () => {
     try {
@@ -85,11 +119,58 @@ export const Profile = () => {
       if (response.ok) {
         const data = await response.json();
         setBookings(data);
+        checkExtensionsForActiveBookings(data);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setBookingsLoading(false);
+    }
+  };
+
+  // Extend booking handlers
+  const openExtendModal = (booking, nextSlot) => {
+    setBookingToExtend(booking);
+    setExtensionDetails(nextSlot);
+    setExtendError('');
+    setExtendModalOpen(true);
+  };
+
+  const proceedToExtendPayment = () => {
+    setExtendModalOpen(false);
+    setShowPaymentModal(true);
+  };
+
+  const handleExtendPaymentSuccess = async () => {
+    if (!bookingToExtend || !extensionDetails) return;
+    setExtendLoading(true);
+    setExtendError('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingToExtend.id}/extend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to extend booking.');
+      }
+
+      setShowPaymentModal(false);
+      setBookingToExtend(null);
+      setExtensionDetails(null);
+      setBookingMsg(`Booking successfully extended to ${data.booking.end_time.slice(0, 5)}! 🎉`);
+      fetchMyBookings();
+    } catch (err) {
+      setExtendError(err.message || 'Extension failed after payment.');
+      setShowPaymentModal(false);
+      setExtendModalOpen(true);
+    } finally {
+      setExtendLoading(false);
     }
   };
 
@@ -532,94 +613,147 @@ export const Profile = () => {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {displayedBookings.map((b) => (
-                    <div key={b.id} className="glass-card profile-booking-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid var(--card-border)' }}>
-                      
-                      {/* Card Header */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '12px' }}>
-                        <div>
-                          <span className="badge badge-success" style={{ marginBottom: '6px' }}>
-                            {b.facility_type === 'cricket' ? 'Cricket' : b.facility_type === 'tennis' ? 'Tennis' : b.facility_type === 'pickleball' ? 'Pickleball' : 'Other'}
-                          </span>
-                          <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>{b.facility_name}</h3>
-                          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>{b.facility_location}</p>
+                  {displayedBookings.map((b) => {
+                    const bStartMin = timeToMinutes(b.start_time);
+                    const bEndMin = timeToMinutes(b.end_time);
+                    const isPlayingNow = b.status === 'confirmed' && b.bDateStr === todayStr && bStartMin <= currentMinutes && currentMinutes < bEndMin;
+                    const extInfo = extensionStatus[b.id];
+
+                    return (
+                      <div key={b.id} className="glass-card profile-booking-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid var(--card-border)' }}>
+                        
+                        {/* Card Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '12px' }}>
+                          <div>
+                            <span className="badge badge-success" style={{ marginBottom: '6px' }}>
+                              {b.facility_type === 'cricket' ? 'Cricket' : b.facility_type === 'tennis' ? 'Tennis' : b.facility_type === 'pickleball' ? 'Pickleball' : 'Other'}
+                            </span>
+                            <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>{b.facility_name}</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>{b.facility_location}</p>
+                          </div>
+
+                          {/* Status badge */}
+                          <div>
+                            {b.status === 'cancelled' ? (
+                              <span className="badge badge-danger">Cancelled</span>
+                            ) : b.isCompleted ? (
+                              <span className="badge badge-neutral">Completed</span>
+                            ) : isPlayingNow ? (
+                              <span className="badge badge-success" style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#10b981', fontWeight: 700 }}>
+                                🎮 Currently Playing
+                              </span>
+                            ) : (
+                              <span className="badge badge-success">Confirmed</span>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Status badge */}
-                        <div>
-                          {b.status === 'cancelled' ? (
-                            <span className="badge badge-danger">Cancelled</span>
-                          ) : b.isCompleted ? (
-                            <span className="badge badge-neutral">Completed</span>
-                          ) : (
-                            <span className="badge badge-success">Confirmed</span>
-                          )}
+                        {/* Card Timings & Pricing Details */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          background: 'var(--bg-surface)',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1px solid var(--border)'
+                        }}>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Date</span>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '2px' }}>{b.bDateStr}</p>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Time Slot</span>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '2px', color: 'var(--primary)' }}>{b.start_time.slice(0, 5)} - {b.end_time.slice(0, 5)}</p>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Price Paid</span>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 700, marginTop: '2px' }}>₹{parseFloat(b.total_price).toFixed(2)}</p>
+                          </div>
                         </div>
+
+                        {/* Next Slot Availability Banner for Currently Playing Sessions */}
+                        {isPlayingNow && extInfo && (
+                          <div style={{ marginTop: '2px' }}>
+                            {extInfo.canExtend ? (
+                              <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#10b981', fontWeight: 600 }}>
+                                  <Sparkles size={16} />
+                                  <span>Next Slot Available: <strong>{extInfo.nextSlot.startTime} - {extInfo.nextSlot.endTime}</strong></span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 500 }}>
+                                <AlertCircle size={16} />
+                                <span>Next Slot Unavailable ({extInfo.reason || 'Booked or Facility Closed'})</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Action row (Order Food, Extend booking & Cancel booking) */}
+                        {b.status === 'confirmed' && !b.isCompleted && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '12px', gap: '12px', flexWrap: 'wrap', width: '100%' }}>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                              {/* Order Food Button — Always visible before or during the slot */}
+                              <button
+                                onClick={() => navigate(`/canteen?bookingId=${b.id}&facilityId=${b.facility_id}&facilityName=${encodeURIComponent(b.facility_name || '')}`)}
+                                className="btn"
+                                style={{ 
+                                  padding: '8px 16px', 
+                                  fontSize: '0.8rem', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '6px',
+                                  background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                                  color: '#fff',
+                                  border: 'none',
+                                  fontWeight: 700
+                                }}
+                              >
+                                <UtensilsCrossed size={14} />
+                                Order Food
+                              </button>
+
+                              {/* Extend Booking Button — only shown if currently playing and next slot is available */}
+                              {isPlayingNow && extInfo && extInfo.canExtend && (
+                                <button
+                                  onClick={() => openExtendModal(b, extInfo.nextSlot)}
+                                  className="btn btn-primary"
+                                  style={{ 
+                                    padding: '8px 16px', 
+                                    fontSize: '0.8rem', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '6px',
+                                    fontWeight: 700,
+                                    background: 'linear-gradient(135deg, var(--primary), #8b5cf6)',
+                                    boxShadow: '0 2px 10px rgba(99, 102, 241, 0.3)'
+                                  }}
+                                >
+                                  <Clock size={14} />
+                                  Extend Booking (+₹{extInfo.nextSlot.price.toFixed(2)})
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Cancel Booking Button — only available before match starts */}
+                            {!(b.bDateStr === todayStr && timeToMinutes(b.start_time) <= currentMinutes) && (
+                              <button 
+                                onClick={() => openCancelConfirm(b)}
+                                className="btn btn-danger"
+                                style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                              >
+                                <Trash2 size={14} />
+                                Cancel Booking
+                              </button>
+                            )}
+                          </div>
+                        )}
+
                       </div>
-
-                      {/* Card Timings & Pricing Details */}
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                        gap: '12px',
-                        padding: '12px 16px',
-                        background: 'var(--bg-surface)',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--border)'
-                      }}>
-                        <div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Date</span>
-                          <p style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '2px' }}>{b.bDateStr}</p>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Time Slot</span>
-                          <p style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '2px', color: 'var(--primary)' }}>{b.start_time.slice(0, 5)} - {b.end_time.slice(0, 5)}</p>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Price Paid</span>
-                          <p style={{ fontSize: '0.9rem', fontWeight: 700, marginTop: '2px' }}>₹{parseFloat(b.total_price).toFixed(2)}</p>
-                        </div>
-                      </div>
-
-                      {/* Action row (Order Food & Cancel booking) */}
-                      {b.status === 'confirmed' && !b.isCompleted && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '12px', gap: '12px', flexWrap: 'wrap', width: '100%' }}>
-                          {/* Order Food Button — Always visible before or during the slot */}
-                          <button
-                            onClick={() => navigate(`/canteen?bookingId=${b.id}&facilityId=${b.facility_id}&facilityName=${encodeURIComponent(b.facility_name || '')}`)}
-                            className="btn"
-                            style={{ 
-                              padding: '8px 16px', 
-                              fontSize: '0.8rem', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '6px',
-                              background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-                              color: '#fff',
-                              border: 'none',
-                              fontWeight: 700
-                            }}
-                          >
-                            <UtensilsCrossed size={14} />
-                            Order Food
-                          </button>
-
-                          {/* Cancel Booking Button — only available before match starts */}
-                          {!(b.bDateStr === todayStr && timeToMinutes(b.start_time) <= currentMinutes) && (
-                            <button 
-                              onClick={() => openCancelConfirm(b)}
-                              className="btn btn-danger"
-                              style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                            >
-                              <Trash2 size={14} />
-                              Cancel Booking
-                            </button>
-                          )}
-                        </div>
-                      )}
-
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -903,6 +1037,79 @@ export const Profile = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Extend Booking Confirmation Modal */}
+      <Modal
+        isOpen={extendModalOpen}
+        onClose={() => { if (!extendLoading) setExtendModalOpen(false); }}
+        title="Extend Current Booking ⏱️"
+      >
+        {bookingToExtend && extensionDetails && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              You are currently playing at <strong>{bookingToExtend.facility_name}</strong>. Reserve the immediately next slot to extend your playing time!
+            </p>
+
+            <div style={{ background: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Current Session Slot:</span>
+                <span style={{ fontWeight: 600 }}>{bookingToExtend.start_time.slice(0, 5)} - {bookingToExtend.end_time.slice(0, 5)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Extension Slot:</span>
+                <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{extensionDetails.startTime} - {extensionDetails.endTime}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>New Extended Duration:</span>
+                <span style={{ fontWeight: 700, color: '#10b981' }}>{bookingToExtend.start_time.slice(0, 5)} - {extensionDetails.endTime}</span>
+              </div>
+              <div style={{ borderBottom: '1px solid var(--border)', margin: '4px 0' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>Additional Slot Price:</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981' }}>₹{extensionDetails.price.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div style={{ padding: '10px 12px', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.2)', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+              ⚡ The 2-hour advance buffer rule does NOT apply to this extension since you are already playing.
+            </div>
+
+            {extendError && (
+              <div style={{ color: 'var(--danger)', fontSize: '0.85rem', padding: '10px', background: 'rgba(239,68,68,0.1)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                ⚠️ {extendError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'end', marginTop: '4px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setExtendModalOpen(false)}
+                disabled={extendLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={proceedToExtendPayment}
+                disabled={extendLoading}
+                style={{ padding: '10px 20px', fontWeight: 700 }}
+              >
+                Proceed to Pay ₹{extensionDetails.price.toFixed(2)}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Razorpay Payment Modal for Booking Extension */}
+      {showPaymentModal && bookingToExtend && extensionDetails && (
+        <RazorpayModal
+          totalPrice={extensionDetails.price}
+          merchantName={bookingToExtend.facility_name}
+          onSuccess={handleExtendPaymentSuccess}
+          onClose={() => setShowPaymentModal(false)}
+        />
+      )}
 
       <style>{`
         @media (min-width: 992px) {

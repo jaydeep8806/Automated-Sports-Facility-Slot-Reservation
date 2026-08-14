@@ -22,7 +22,7 @@ services:
 
   # 2. Frontend Static Site (React/Vite)
   - type: web
-    name: sportslot-frontend
+    name: sportslot
     runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: dist
