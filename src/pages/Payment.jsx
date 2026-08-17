@@ -15,11 +15,24 @@ export const Payment = () => {
   const { token } = useAuth();
 
   const bookingData = location.state || {};
-  const { facilityId, facilityName, facilityLocation, date, selectedSlots = [], totalPrice = 0 } = bookingData;
+  const {
+    isExtension = false,
+    extendBookingId = null,
+    facilityId,
+    facilityName,
+    facilityLocation,
+    date,
+    originalStartTime = null,
+    originalEndTime = null,
+    originalTotalPrice = 0,
+    selectedSlots = [],
+    totalPrice = 0
+  } = bookingData;
 
   const [showModal, setShowModal] = useState(false);
   const [success, setSuccess] = useState(false);
   const [createdBookingIds, setCreatedBookingIds] = useState([]);
+  const [updatedBooking, setUpdatedBooking] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!facilityId || selectedSlots.length === 0) {
@@ -39,21 +52,50 @@ export const Payment = () => {
 
   /* Called from modal after payment simulation */
   const handlePaymentSuccess = async () => {
-    const response = await fetch(API_BASE_URL + '/api/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({
-        facilityId, date,
-        slots: selectedSlots.map(s => ({ startTime: s.startTime, endTime: s.endTime, price: s.price })),
-        totalPrice,
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Booking failed after payment.');
-    const ids = data.bookings ? data.bookings.map(b => b.id) : (data.booking ? [data.booking.id] : []);
-    setCreatedBookingIds(ids);
-    setShowModal(false);
-    setSuccess(true);
+    try {
+      if (isExtension && extendBookingId) {
+        // Extend existing active booking
+        const response = await fetch(`${API_BASE_URL}/api/bookings/${extendBookingId}/extend`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            slots: selectedSlots.map(s => ({ startTime: s.startTime, endTime: s.endTime, price: s.price })),
+            additionalPrice: totalPrice,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Extension failed after payment.');
+
+        setUpdatedBooking(data.booking);
+        setCreatedBookingIds([extendBookingId]);
+        setShowModal(false);
+        setSuccess(true);
+      } else {
+        // Normal booking creation
+        const response = await fetch(API_BASE_URL + '/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            facilityId, date,
+            slots: selectedSlots.map(s => ({ startTime: s.startTime, endTime: s.endTime, price: s.price })),
+            totalPrice,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Booking failed after payment.');
+
+        const ids = data.bookings ? data.bookings.map(b => b.id) : (data.booking ? [data.booking.id] : []);
+        setCreatedBookingIds(ids);
+        setShowModal(false);
+        setSuccess(true);
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Payment processing error.');
+      setShowModal(false);
+      throw err;
+    }
   };
 
   return (
@@ -62,9 +104,13 @@ export const Payment = () => {
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Wallet style={{ color: 'var(--primary)' }} /> Secure Checkout
+          <Wallet style={{ color: 'var(--primary)' }} /> {isExtension ? 'Extend Booking Checkout' : 'Secure Checkout'}
         </h1>
-        <p style={{ color: 'var(--text-muted)', marginTop: '6px' }}>Review your booking and complete the payment.</p>
+        <p style={{ color: 'var(--text-muted)', marginTop: '6px' }}>
+          {isExtension
+            ? 'Review your additional extension slots and complete payment.'
+            : 'Review your booking and complete the payment.'}
+        </p>
       </div>
 
       {/* SUCCESS VIEW */}
@@ -73,11 +119,47 @@ export const Payment = () => {
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(16,185,129,0.1)', border: '2px solid rgb(16,185,129)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' }}>
             <ShieldCheck size={40} style={{ color: 'rgb(16,185,129)' }} />
           </div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '12px', color: 'rgb(16,185,129)' }}>Booking Confirmed! 🎉</h2>
-          <p style={{ color: 'var(--text-main)', fontSize: '1.05rem', fontWeight: 500, marginBottom: '6px' }}>Your slot at <strong>{facilityName}</strong> is reserved.</p>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '12px', color: 'rgb(16,185,129)' }}>
+            {isExtension ? 'Booking Extended Successfully! 🎉' : 'Booking Confirmed! 🎉'}
+          </h2>
+          <p style={{ color: 'var(--text-main)', fontSize: '1.05rem', fontWeight: 500, marginBottom: '6px' }}>
+            {isExtension
+              ? <>Your session at <strong>{facilityName}</strong> has been extended to <strong>{selectedSlots[selectedSlots.length - 1]?.endTime}</strong>.</>
+              : <>Your slot at <strong>{facilityName}</strong> is reserved.</>
+            }
+          </p>
           {createdBookingIds.length > 0 && (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '32px' }}>Booking ID: {createdBookingIds.map(id => `#${id}`).join(', ')}</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Booking ID: {createdBookingIds.map(id => `#${id}`).join(', ')}
+            </p>
           )}
+
+          {isExtension && (
+            <div style={{
+              background: 'rgba(99, 102, 241, 0.08)',
+              border: '1px solid rgba(99, 102, 241, 0.25)',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              fontSize: '0.9rem',
+              textAlign: 'left'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Updated Session Timing:</span>
+                <strong style={{ color: 'var(--primary)' }}>
+                  {originalStartTime ? `${originalStartTime} – ${selectedSlots[selectedSlots.length - 1]?.endTime}` : `${selectedSlots[0]?.startTime} – ${selectedSlots[selectedSlots.length - 1]?.endTime}`}
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Extension Amount Paid:</span>
+                <strong>₹{totalPrice.toFixed(2)}</strong>
+              </div>
+            </div>
+          )}
+
           {errorMsg && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '16px' }}>{errorMsg}</p>}
 
           {/* Canteen CTA */}
@@ -95,7 +177,7 @@ export const Payment = () => {
             </button>
           </div>
           <button onClick={() => navigate('/profile')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}>
-            Skip — Go to my bookings
+            Go to My Bookings → Active Bookings
           </button>
         </div>
       ) : (
@@ -105,7 +187,7 @@ export const Payment = () => {
           {/* Left: Payment Trigger */}
           <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '16px' }}>
-              Complete Your Payment
+              {isExtension ? 'Complete Extension Payment' : 'Complete Your Payment'}
             </h2>
 
             {/* Supported methods */}
@@ -134,12 +216,12 @@ export const Payment = () => {
             )}
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => navigate(`/facilities/${facilityId}`)} className="btn"
+              <button onClick={() => navigate(`/facilities/${facilityId}${isExtension ? `?extendBookingId=${extendBookingId}` : ''}`)} className="btn"
                 style={{ flex: 1, padding: '14px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--card-border)' }}>
                 Cancel
               </button>
               <button onClick={() => { window.scrollTo({ top: 0, behavior: 'instant' }); setShowModal(true); }} className="btn btn-primary"
-                style={{ flex: 2, padding: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '1rem', fontWeight: 700 }}>
+                style={{ flex: 2, padding: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '1rem', fontWeight: 700, background: isExtension ? 'linear-gradient(135deg, var(--primary), #8b5cf6)' : undefined }}>
                 <Lock size={16} /> Pay ₹{totalPrice.toFixed(2)} Securely
               </button>
             </div>
@@ -147,9 +229,10 @@ export const Payment = () => {
 
           {/* Right: Booking Summary */}
           <div style={{ position: 'relative' }}>
-            <div className="glass-card" style={{ padding: '32px', position: 'sticky', top: '110px', border: '1px solid var(--card-border)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="glass-card" style={{ padding: '32px', position: 'sticky', top: '110px', border: isExtension ? '1.5px solid var(--primary)' : '1px solid var(--card-border)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Activity size={18} style={{ color: 'var(--primary)' }} /> Booking Summary
+                <Activity size={18} style={{ color: 'var(--primary)' }} />
+                {isExtension ? 'Extension Summary' : 'Booking Summary'}
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
@@ -158,13 +241,32 @@ export const Payment = () => {
                     <MapPin size={14} style={{ color: 'var(--primary)' }} /><span>{facilityLocation}</span>
                   </div>
                 </div>
+
+                {isExtension && originalStartTime && originalEndTime && (
+                  <div style={{
+                    padding: '10px 12px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    fontSize: '0.82rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Current Session (Paid):</span>
+                    <strong style={{ color: 'var(--text-main)' }}>{originalStartTime} – {originalEndTime}</strong>
+                  </div>
+                )}
+
                 <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={14} /> Date</span>
                   <span style={{ fontWeight: 600 }}>{date}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}><Clock size={14} /> Time Slots ({selectedSlots.length})</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Clock size={14} /> {isExtension ? 'Added Extension Slots' : 'Time Slots'} ({selectedSlots.length})
+                  </span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '20px' }}>
                     {selectedSlots.map((s, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
@@ -174,11 +276,29 @@ export const Payment = () => {
                     ))}
                   </div>
                 </div>
+
+                {isExtension && originalStartTime && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(99, 102, 241, 0.08)', padding: '8px 12px', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>New Total Match Time:</span>
+                    <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.9rem' }}>
+                      {originalStartTime} – {selectedSlots[selectedSlots.length - 1]?.endTime}
+                    </span>
+                  </div>
+                )}
+
                 <div style={{ borderBottom: '2px solid var(--card-border)', paddingBottom: '12px', marginTop: '8px' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '1.05rem', fontWeight: 700 }}>Total Chargeable:</span>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                    {isExtension ? 'Payable for Extension:' : 'Total Chargeable:'}
+                  </span>
                   <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--primary)' }}>₹{totalPrice.toFixed(2)}</span>
                 </div>
+
+                {isExtension && (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    ℹ️ You are only being charged for the newly added {selectedSlots.length} slot(s). Your current booking remains active.
+                  </p>
+                )}
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import RazorpayModal from '../components/RazorpayModal';
-import { User, Phone, Mail, Lock, History, ClipboardCheck, Trash2, ShieldAlert, Check, UtensilsCrossed, AlertCircle, Clock, Sparkles } from 'lucide-react';
+import { User, Phone, Mail, Lock, History, ClipboardCheck, Trash2, ShieldAlert, Check, UtensilsCrossed, AlertCircle, Clock, Sparkles, Star } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -56,6 +56,15 @@ export const Profile = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [extendLoading, setExtendLoading] = useState(false);
   const [extendError, setExtendError] = useState('');
+
+  // Reviews/Feedback states
+  const [myReviews, setMyReviews] = useState({});
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [bookingToReview, setBookingToReview] = useState(null);
+  const [starRating, setStarRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState('');
 
   // Food Orders states
   const [foodOrders, setFoodOrders] = useState([]);
@@ -174,9 +183,70 @@ export const Profile = () => {
     }
   };
 
+  // Fetch user submitted reviews to prevent duplicate review UI
+  const fetchMyReviews = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(API_BASE_URL + '/api/reviews/my-reviews', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const map = {};
+        data.forEach(r => { map[r.booking_id] = r; });
+        setMyReviews(map);
+      }
+    } catch (err) {
+      console.error('Fetch my reviews error:', err);
+    }
+  };
+
+  const openReviewModal = (booking) => {
+    setBookingToReview(booking);
+    setStarRating(5);
+    setReviewComment('');
+    setReviewError('');
+    setReviewModalOpen(true);
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!bookingToReview) return;
+    setReviewSubmitting(true);
+    setReviewError('');
+
+    try {
+      const res = await fetch(API_BASE_URL + '/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          bookingId: bookingToReview.id,
+          rating: starRating,
+          comment: reviewComment
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to submit feedback.');
+
+      setReviewModalOpen(false);
+      setBookingToReview(null);
+      setBookingMsg('Thank you! Your feedback has been submitted successfully. ⭐');
+      fetchMyReviews();
+    } catch (err) {
+      setReviewError(err.message || 'Failed to submit feedback.');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     fetchMyBookings();
     fetchMyFoodOrders(true);
+    fetchMyReviews();
   }, [token]);
 
   // Dynamic status updates: Poll food orders every 5 seconds when in Food tab
@@ -617,23 +687,31 @@ export const Profile = () => {
                     const bStartMin = timeToMinutes(b.start_time);
                     const bEndMin = timeToMinutes(b.end_time);
                     const isPlayingNow = b.status === 'confirmed' && b.bDateStr === todayStr && bStartMin <= currentMinutes && currentMinutes < bEndMin;
-                    const extInfo = extensionStatus[b.id];
+                    const durationHours = ((bEndMin - bStartMin) / 60);
+                    const durationText = durationHours === 1 ? '1 Hour' : `${Number.isInteger(durationHours) ? durationHours : durationHours.toFixed(1)} Hours`;
 
                     return (
-                      <div key={b.id} className="glass-card profile-booking-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid var(--card-border)' }}>
+                      <div key={b.id} className="glass-card profile-booking-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', border: b.is_extended ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid var(--card-border)' }}>
                         
                         {/* Card Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '12px' }}>
                           <div>
-                            <span className="badge badge-success" style={{ marginBottom: '6px' }}>
-                              {b.facility_type === 'cricket' ? 'Cricket' : b.facility_type === 'tennis' ? 'Tennis' : b.facility_type === 'pickleball' ? 'Pickleball' : 'Other'}
-                            </span>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '6px' }}>
+                              <span className="badge badge-success">
+                                {b.facility_type === 'cricket' ? 'Cricket' : b.facility_type === 'tennis' ? 'Tennis' : b.facility_type === 'pickleball' ? 'Pickleball' : 'Other'}
+                              </span>
+                              {b.is_extended && (
+                                <span className="badge" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2))', border: '1px solid var(--primary)', color: 'var(--primary)', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  ↗ Extended Booking
+                                </span>
+                              )}
+                            </div>
                             <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>{b.facility_name}</h3>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>{b.facility_location}</p>
                           </div>
 
-                          {/* Status badge */}
-                          <div>
+                          {/* Status badges */}
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                             {b.status === 'cancelled' ? (
                               <span className="badge badge-danger">Cancelled</span>
                             ) : b.isCompleted ? (
@@ -643,7 +721,7 @@ export const Profile = () => {
                                 🎮 Currently Playing
                               </span>
                             ) : (
-                              <span className="badge badge-success">Confirmed</span>
+                              <span className="badge badge-success">✓ Active</span>
                             )}
                           </div>
                         </div>
@@ -663,31 +741,45 @@ export const Profile = () => {
                             <p style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '2px' }}>{b.bDateStr}</p>
                           </div>
                           <div>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Time Slot</span>
-                            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '2px', color: 'var(--primary)' }}>{b.start_time.slice(0, 5)} - {b.end_time.slice(0, 5)}</p>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Booking Time</span>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 700, marginTop: '2px', color: 'var(--primary)' }}>
+                              {b.start_time.slice(0, 5)} – {b.end_time.slice(0, 5)}
+                            </p>
                           </div>
                           <div>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Price Paid</span>
-                            <p style={{ fontSize: '0.9rem', fontWeight: 700, marginTop: '2px' }}>₹{parseFloat(b.total_price).toFixed(2)}</p>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Duration</span>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '2px' }}>{durationText}</p>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Amount</span>
+                            <p style={{ fontSize: '0.9rem', fontWeight: 800, marginTop: '2px' }}>₹{parseFloat(b.total_price).toFixed(2)}</p>
                           </div>
                         </div>
 
-                        {/* Next Slot Availability Banner for Currently Playing Sessions */}
-                        {isPlayingNow && extInfo && (
-                          <div style={{ marginTop: '2px' }}>
-                            {extInfo.canExtend ? (
-                              <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#10b981', fontWeight: 600 }}>
-                                  <Sparkles size={16} />
-                                  <span>Next Slot Available: <strong>{extInfo.nextSlot.startTime} - {extInfo.nextSlot.endTime}</strong></span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 500 }}>
-                                <AlertCircle size={16} />
-                                <span>Next Slot Unavailable ({extInfo.reason || 'Booked or Facility Closed'})</span>
-                              </div>
-                            )}
+                        {/* Extended Booking Slot Breakdown */}
+                        {b.is_extended && (
+                          <div style={{
+                            padding: '10px 14px',
+                            borderRadius: 'var(--radius-md)',
+                            background: 'rgba(99, 102, 241, 0.06)',
+                            border: '1px solid rgba(99, 102, 241, 0.2)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '8px',
+                            fontSize: '0.82rem'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Clock size={14} style={{ color: 'var(--primary)' }} />
+                              <span>
+                                Original: <strong>{(b.original_start_time || b.start_time).slice(0, 5)} – {(b.original_end_time || b.start_time).slice(0, 5)}</strong>
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                                ↗ Extended: <strong>{(b.original_end_time || b.start_time).slice(0, 5)} – {b.end_time.slice(0, 5)}</strong>
+                              </span>
+                            </div>
                           </div>
                         )}
 
@@ -715,30 +807,30 @@ export const Profile = () => {
                                 Order Food
                               </button>
 
-                              {/* Extend Booking Button — only shown if currently playing and next slot is available */}
-                              {isPlayingNow && extInfo && extInfo.canExtend && (
+                              {/* Extend Booking Button — navigates directly to facility reservation timing page */}
+                              {isPlayingNow && (
                                 <button
-                                  onClick={() => openExtendModal(b, extInfo.nextSlot)}
+                                  onClick={() => navigate(`/facilities/${b.facility_id}?extendBookingId=${b.id}`, { state: { extendBookingId: b.id, originalBooking: b } })}
                                   className="btn btn-primary"
                                   style={{ 
                                     padding: '8px 16px', 
                                     fontSize: '0.8rem', 
                                     display: 'flex', 
                                     alignItems: 'center', 
-                                    gap: '6px',
+                                    gap: '6px', 
                                     fontWeight: 700,
                                     background: 'linear-gradient(135deg, var(--primary), #8b5cf6)',
                                     boxShadow: '0 2px 10px rgba(99, 102, 241, 0.3)'
                                   }}
                                 >
                                   <Clock size={14} />
-                                  Extend Booking (+₹{extInfo.nextSlot.price.toFixed(2)})
+                                  Extend Booking
                                 </button>
                               )}
                             </div>
 
                             {/* Cancel Booking Button — only available before match starts */}
-                            {!(b.bDateStr === todayStr && timeToMinutes(b.start_time) <= currentMinutes) && (
+                            {!(b.bDateStr === todayStr && timeToMinutes(b.start_time) <= currentMinutes) && !b.is_extended && (
                               <button 
                                 onClick={() => openCancelConfirm(b)}
                                 className="btn btn-danger"
@@ -746,6 +838,44 @@ export const Profile = () => {
                               >
                                 <Trash2 size={14} />
                                 Cancel Booking
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Feedback / Review Section for Completed Bookings */}
+                        {b.status === 'confirmed' && b.isCompleted && (
+                          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                            {myReviews[b.id] ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
+                                <Check size={14} />
+                                <span>Feedback Submitted</span>
+                                <div style={{ display: 'flex', gap: '2px', marginLeft: '6px' }}>
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star key={i} size={12} fill={i < myReviews[b.id].rating ? '#f59e0b' : 'none'} stroke={i < myReviews[b.id].rating ? '#f59e0b' : 'var(--text-muted)'} />
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => openReviewModal(b)}
+                                className="btn"
+                                style={{
+                                  padding: '8px 16px',
+                                  fontSize: '0.8rem',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                  color: '#fff',
+                                  border: 'none',
+                                  fontWeight: 700,
+                                  borderRadius: '8px',
+                                  boxShadow: '0 2px 10px rgba(245, 158, 11, 0.25)'
+                                }}
+                              >
+                                <Star size={14} fill="#fff" stroke="none" />
+                                Leave Feedback
                               </button>
                             )}
                           </div>
@@ -1110,6 +1240,93 @@ export const Profile = () => {
           onClose={() => setShowPaymentModal(false)}
         />
       )}
+
+      {/* Post-Booking Feedback Modal */}
+      <Modal
+        isOpen={reviewModalOpen}
+        onClose={() => { if (!reviewSubmitting) setReviewModalOpen(false); }}
+        title="How was your experience? ⭐"
+      >
+        {bookingToReview && (
+          <form onSubmit={handleSubmitReview} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ background: 'var(--bg-surface)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+              <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--text-main)' }}>{bookingToReview.facility_name}</h4>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
+                Session Date: <strong>{bookingToReview.bDateStr}</strong> ({bookingToReview.start_time.slice(0, 5)} - {bookingToReview.end_time.slice(0, 5)})
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '8px 0' }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>Rate Your Session</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setStarRating(star)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      transition: 'transform 0.15s ease'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <Star
+                      size={32}
+                      fill={star <= starRating ? '#f59e0b' : 'none'}
+                      stroke={star <= starRating ? '#f59e0b' : 'var(--text-muted)'}
+                      strokeWidth={1.5}
+                    />
+                  </button>
+                ))}
+              </div>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f59e0b' }}>
+                {starRating === 5 ? '⭐⭐⭐⭐⭐ Outstanding!' : starRating === 4 ? '⭐⭐⭐⭐ Great Experience' : starRating === 3 ? '⭐⭐⭐ Average' : starRating === 2 ? '⭐⭐ Poor' : '⭐ Terrible'}
+              </span>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Write your feedback / review (optional)</label>
+              <textarea
+                className="form-input"
+                rows={3}
+                placeholder="Share details of your experience with the ground, playing surface, equipment, or amenities..."
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+
+            {reviewError && (
+              <div style={{ color: 'var(--danger)', fontSize: '0.85rem', padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                ⚠️ {reviewError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'end', marginTop: '4px' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setReviewModalOpen(false)}
+                disabled={reviewSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={reviewSubmitting}
+                style={{ padding: '10px 20px', fontWeight: 700, background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', border: 'none' }}
+              >
+                {reviewSubmitting ? 'Submitting...' : 'Submit Feedback'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       <style>{`
         @media (min-width: 992px) {

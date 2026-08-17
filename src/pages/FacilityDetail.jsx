@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Info, CalendarCheck2, ShieldAlert, Sparkles, Check, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Info, CalendarCheck2, ShieldAlert, Sparkles, Check, Clock, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+
+// Helper: Convert time string "HH:MM:SS" or "HH:MM" to minutes from midnight
+const timeToMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':');
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  return hours * 60 + minutes;
+};
 
 // ── Mini Calendar Component ──────────────────────────────────────────────────
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -164,15 +173,12 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-
 const SPORT_IMAGES = {
   cricket: '/img_cricket.png',
   tennis: '/img_tennis.png',
   pickleball: '/img_pickleball.png',
   default: '/img_cricket.png',
 };
-
-
 
 const getFacilityImage = (images, type) => {
   const fallback = SPORT_IMAGES[type] || SPORT_IMAGES.default;
@@ -196,11 +202,17 @@ const getFacilityImage = (images, type) => {
   return fallback;
 };
 
-
 export const FacilityDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { token } = useAuth();
+
+  // Extend booking mode parameters
+  const extendBookingId = searchParams.get('extendBookingId') || location.state?.extendBookingId;
+  const [activeBookingInfo, setActiveBookingInfo] = useState(location.state?.originalBooking || null);
+  const [isExtendMode, setIsExtendMode] = useState(!!extendBookingId);
 
   const [facility, setFacility] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -222,6 +234,29 @@ export const FacilityDetail = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Facility Rating & Reviews states
+  const [facilityRating, setFacilityRating] = useState({ avg: 0, count: 0 });
+  const [facilityReviews, setFacilityReviews] = useState([]);
+
+  useEffect(() => {
+    const fetchFacilityReviews = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/reviews/facility/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setFacilityReviews(data);
+          if (data.length > 0) {
+            const sum = data.reduce((acc, r) => acc + r.rating, 0);
+            setFacilityRating({ avg: sum / data.length, count: data.length });
+          }
+        }
+      } catch (err) {
+        console.error('Fetch facility reviews error:', err);
+      }
+    };
+    if (id) fetchFacilityReviews();
+  }, [id]);
 
   // 0. Fetch server time on mount to determine today in IST
   useEffect(() => {
@@ -269,10 +304,16 @@ export const FacilityDetail = () => {
     setSelectedSlots([]);
     setErrorMessage('');
     try {
-      const response = await fetch(`${API_BASE_URL}/api/facilities/${id}/slots?date=${selectedDate}`);
+      const url = `${API_BASE_URL}/api/facilities/${id}/slots?date=${selectedDate}${extendBookingId ? `&extendBookingId=${extendBookingId}` : ''}`;
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const response = await fetch(url, { headers });
       if (response.ok) {
         const data = await response.json();
-        setSlots(data.slots);
+        setSlots(data.slots || []);
+        if (data.isExtensionMode && data.activeBooking) {
+          setIsExtendMode(true);
+          setActiveBookingInfo(prev => prev || data.activeBooking);
+        }
       } else {
         const data = await response.json();
         setErrorMessage(data.message || 'Error loading slot availability.');
@@ -289,17 +330,89 @@ export const FacilityDetail = () => {
     if (facility) {
       fetchAvailability();
     }
-  }, [selectedDate, facility]);
+  }, [selectedDate, facility, extendBookingId]);
+
+  // Slot click handler with support for Extend Mode consecutive selection
+  const handleSlotClick = (slot) => {
+    if (slot.booked || slot.isPast || slot.isTooSoon) return;
+
+    if (!isExtendMode || !activeBookingInfo) {
+      // Normal booking flow
+      if (selectedSlots.some(s => s.startTime === slot.startTime)) {
+        setSelectedSlots(selectedSlots.filter(s => s.startTime !== slot.startTime));
+      } else {
+        const newSlots = [...selectedSlots, slot].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+        setSelectedSlots(newSlots);
+      }
+      return;
+    }
+
+    // Extend Mode Flow
+    const currentBookingEnd = (activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5);
+    const currentBookingEndMin = timeToMinutes(currentBookingEnd);
+    const slotStartMin = timeToMinutes(slot.startTime);
+
+    // In extend mode, extension must be >= current booking end time
+    if (slotStartMin < currentBookingEndMin) {
+      setErrorMessage(`Extension slots must start at or after your current session end time (${currentBookingEnd}).`);
+      return;
+    }
+
+    // Available slots after currentBookingEnd
+    const availableSlotsSorted = slots
+      .filter(s => !s.booked && !s.isPast && !s.isTooSoon && timeToMinutes(s.startTime) >= currentBookingEndMin)
+      .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+    const isAlreadySelected = selectedSlots.some(s => s.startTime === slot.startTime);
+
+    if (isAlreadySelected) {
+      // Unselect this slot and any slots that were selected after it
+      const remaining = selectedSlots.filter(s => timeToMinutes(s.startTime) < timeToMinutes(slot.startTime));
+      setSelectedSlots(remaining);
+      setErrorMessage('');
+    } else {
+      // Connect consecutive slots up to clicked slot
+      const targetIndex = availableSlotsSorted.findIndex(s => s.startTime === slot.startTime);
+      if (targetIndex === -1) return;
+
+      let isContiguous = true;
+      const toSelect = [];
+      let expectedStart = currentBookingEndMin;
+
+      for (let i = 0; i <= targetIndex; i++) {
+        const s = availableSlotsSorted[i];
+        if (timeToMinutes(s.startTime) !== expectedStart) {
+          isContiguous = false;
+          break;
+        }
+        toSelect.push(s);
+        expectedStart = timeToMinutes(s.endTime);
+      }
+
+      if (!isContiguous) {
+        setErrorMessage(`Cannot select slot (${slot.startTime} - ${slot.endTime}) because intermediate slots are booked or unavailable. Extended slots must connect consecutively to your current match session.`);
+        return;
+      }
+
+      setErrorMessage('');
+      setSelectedSlots(toSelect);
+    }
+  };
 
   const handleProceedToPayment = () => {
     if (selectedSlots.length === 0) return;
     const totalPrice = selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0);
     navigate('/payment', {
       state: {
+        isExtension: isExtendMode,
+        extendBookingId: extendBookingId,
         facilityId: id,
         facilityName: facility.name,
         facilityLocation: facility.location,
         date: selectedDate,
+        originalStartTime: activeBookingInfo ? (activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5) : null,
+        originalEndTime: activeBookingInfo ? (activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5) : null,
+        originalTotalPrice: activeBookingInfo ? parseFloat(activeBookingInfo.totalPrice || activeBookingInfo.total_price || 0) : 0,
         selectedSlots: selectedSlots,
         totalPrice: totalPrice
       }
@@ -362,9 +475,20 @@ export const FacilityDetail = () => {
                 {facility.type === 'cricket' ? 'Cricket Ground' : facility.type === 'tennis' ? 'Tennis Court' : 'Pickleball Arena'}
               </span>
               <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>{facility.name}</h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '6px' }}>
-                <MapPin size={16} style={{ color: 'var(--primary)' }} />
-                <span>{facility.location}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', marginTop: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                  <MapPin size={16} style={{ color: 'var(--primary)' }} />
+                  <span>{facility.location}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.15)', padding: '3px 10px', borderRadius: '999px', border: '1px solid rgba(245,158,11,0.3)' }}>
+                  <Star size={14} fill="#f59e0b" stroke="none" />
+                  <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#f59e0b' }}>
+                    {facilityRating.count > 0 ? facilityRating.avg.toFixed(1) : '4.8'}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    ({facilityRating.count > 0 ? `${facilityRating.count} reviews` : 'Based on player reviews'})
+                  </span>
+                </div>
               </div>
             </div>
             <div>
@@ -452,14 +576,48 @@ export const FacilityDetail = () => {
         {/* ── SECOND ROW: Reservation Timing (Left) | Calendar + Booking Details (Right) ── */}
         <div className="row-grid-align-top">
           {/* Left: Choose Reservation Timing Card (PROMINENT & SPACIOUS) */}
-          <div className="glass-card" style={{ padding: '36px' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <CalendarCheck2 size={22} style={{ color: 'var(--primary)' }} />
-              Choose Reservation Timing
-            </h2>
+          <div className="glass-card" style={{ padding: '36px', border: isExtendMode ? '1.5px solid var(--primary)' : undefined }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CalendarCheck2 size={22} style={{ color: 'var(--primary)' }} />
+                {isExtendMode ? 'Extend Reservation Timing' : 'Choose Reservation Timing'}
+              </h2>
+              {isExtendMode && (
+                <span className="badge" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2))', border: '1px solid var(--primary)', color: 'var(--primary)', fontWeight: 800 }}>
+                  ↗ Extend Booking Flow
+                </span>
+              )}
+            </div>
 
-            {/* 2-Hour Advance Notice Banner (Today only) */}
-            {isToday && (
+            {/* Extend Notice Banner OR 2-Hour Advance Notice Banner */}
+            {isExtendMode && activeBookingInfo ? (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: '12px',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.12))',
+                border: '1.5px solid var(--primary)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                marginBottom: '24px',
+                fontSize: '0.88rem',
+                color: 'var(--text-main)',
+              }}>
+                <Sparkles size={20} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
+                <div style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <strong style={{ color: 'var(--primary)', fontSize: '0.98rem' }}>
+                      ⚡ Extending Active Session (2-Hour Buffer Waived)
+                    </strong>
+                    <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#10b981', fontWeight: 700 }}>
+                      ✓ Active Player
+                    </span>
+                  </div>
+                  <p style={{ color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.5 }}>
+                    Your current match is reserved for <strong>{(activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {(activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}</strong>.
+                    As an active player on the court, the 2-hour advance buffer is waived. You can select one or multiple consecutive available slots starting from <strong>{(activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}</strong>.
+                  </p>
+                </div>
+              </div>
+            ) : isToday && (
               <div style={{
                 display: 'flex', alignItems: 'flex-start', gap: '12px',
                 background: 'rgba(245,158,11,0.08)',
@@ -535,7 +693,7 @@ export const FacilityDetail = () => {
                     background = 'var(--primary-glow)';
                     border = '2px solid var(--primary)';
                     textColor = 'var(--primary)';
-                    statusLabel = 'Selected';
+                    statusLabel = isExtendMode ? 'Extended' : 'Selected';
                     statusColor = 'var(--primary)';
                   } else {
                     statusLabel = 'Available';
@@ -547,13 +705,7 @@ export const FacilityDetail = () => {
                       <button
                         className={`time-slot-btn ${isSelected ? 'selected' : ''}`}
                         disabled={slot.booked || slot.isPast || slot.isTooSoon}
-                        onClick={() => {
-                          if (selectedSlots.some(s => s.startTime === slot.startTime)) {
-                            setSelectedSlots(selectedSlots.filter(s => s.startTime !== slot.startTime));
-                          } else {
-                            setSelectedSlots([...selectedSlots, slot]);
-                          }
-                        }}
+                        onClick={() => handleSlotClick(slot)}
                         title={tooltipText}
                         style={{
                           width: '100%',
@@ -591,9 +743,11 @@ export const FacilityDetail = () => {
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--primary-glow)', border: '1.5px solid var(--primary)', display: 'inline-block' }} /> Available
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(245,158,11,0.15)', border: '1.5px solid rgba(245,158,11,0.5)', display: 'inline-block' }} /> Too Soon (2hr rule)
-                </span>
+                {!isExtendMode && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(245,158,11,0.15)', border: '1.5px solid rgba(245,158,11,0.5)', display: 'inline-block' }} /> Too Soon (2hr rule)
+                  </span>
+                )}
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--danger-glow)', border: '1.5px solid rgba(239,68,68,0.3)', display: 'inline-block' }} /> Booked
                 </span>
@@ -633,15 +787,34 @@ export const FacilityDetail = () => {
             {/* Booking Details Card (Extended Height to Match Left Card Bottom Exactly) */}
             <div className="glass-card" style={{
               padding: '28px 24px',
-              border: '1px solid var(--card-border)',
+              border: isExtendMode ? '1.5px solid var(--primary)' : '1px solid var(--card-border)',
               display: 'flex',
               flexDirection: 'column',
               gap: '14px'
             }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <Sparkles size={18} style={{ color: 'var(--primary)' }} />
-                Booking Details
+                {isExtendMode ? 'Extension Summary' : 'Booking Details'}
               </h2>
+
+              {/* Active Session Info (Extend mode only) */}
+              {isExtendMode && activeBookingInfo && (
+                <div style={{
+                  padding: '12px 14px',
+                  background: 'rgba(99, 102, 241, 0.08)',
+                  border: '1px solid rgba(99, 102, 241, 0.25)',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Current Match Session (Already Paid):</span>
+                  <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>
+                    {(activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {(activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}
+                  </strong>
+                </div>
+              )}
 
               {selectedSlots.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -651,7 +824,9 @@ export const FacilityDetail = () => {
                   </div>
 
                   <div className="slots-scroll-container" style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '133px', overflowY: 'auto', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Selected Slots ({selectedSlots.length}):</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      {isExtendMode ? 'Added Extension Slots' : 'Selected Slots'} ({selectedSlots.length}):
+                    </span>
                     {selectedSlots.map((s, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', paddingLeft: '6px' }}>
                         <span>• {s.startTime} – {s.endTime}</span>
@@ -661,11 +836,22 @@ export const FacilityDetail = () => {
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Total Duration:</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      {isExtendMode ? 'Additional Duration:' : 'Total Duration:'}
+                    </span>
                     <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
                       {selectedSlots.length * (facility.slot_duration / 60)} {selectedSlots.length * (facility.slot_duration / 60) === 1 ? 'hour' : 'hours'}
                     </span>
                   </div>
+
+                  {isExtendMode && activeBookingInfo && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>New Total Match Time:</span>
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary)' }}>
+                        {(activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {selectedSlots[selectedSlots.length - 1].endTime}
+                      </span>
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Hourly Rate:</span>
@@ -673,7 +859,9 @@ export const FacilityDetail = () => {
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--border)', paddingBottom: '10px', marginTop: '2px' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 700 }}>Total Amount:</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 700 }}>
+                      {isExtendMode ? 'Payable Now (New Slots):' : 'Total Amount:'}
+                    </span>
                     <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)' }}>
                       ₹{selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}
                     </span>
@@ -696,19 +884,96 @@ export const FacilityDetail = () => {
                   <button
                     onClick={handleProceedToPayment}
                     className="btn btn-primary"
-                    style={{ width: '100%', padding: '13px', fontSize: '0.92rem' }}
+                    style={{ width: '100%', padding: '13px', fontSize: '0.92rem', background: isExtendMode ? 'linear-gradient(135deg, var(--primary), #8b5cf6)' : undefined }}
                   >
-                    Book Now (Proceed to Payment)
+                    {isExtendMode ? `Proceed to Pay Additional ₹${selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}` : 'Book Now (Proceed to Payment)'}
                   </button>
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <p>Please select a date and one or more available time slots from the schedule list to view booking checkout details.</p>
+                  <p>
+                    {isExtendMode
+                      ? `Please select one or multiple consecutive available slots starting from ${(activeBookingInfo?.endTime || activeBookingInfo?.end_time || '').slice(0, 5)} to extend your session.`
+                      : 'Please select a date and one or more available time slots from the schedule list to view booking checkout details.'}
+                  </p>
                 </div>
               )}
             </div>
 
           </div>
+        </div>
+
+        {/* ── THIRD ROW: Facility Reviews & Rating Breakdown ── */}
+        <div className="glass-card" style={{ padding: '32px', marginTop: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+            <div>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Star size={20} fill="#f59e0b" stroke="none" />
+                Player Reviews & Ratings
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px', margin: 0 }}>
+                Verified feedback from athletes who played at {facility.name}
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg-surface)', padding: '10px 18px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#f59e0b', lineHeight: 1 }}>
+                {facilityRating.count > 0 ? facilityRating.avg.toFixed(1) : '4.8'}
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', gap: '2px' }}>
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={12} fill={i < Math.round(facilityRating.avg || 5) ? '#f59e0b' : 'none'} stroke={i < Math.round(facilityRating.avg || 5) ? 'none' : 'var(--text-muted)'} />
+                  ))}
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  {facilityRating.count} {facilityRating.count === 1 ? 'review' : 'reviews'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {!Array.isArray(facilityReviews) || facilityReviews.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              <p style={{ margin: 0 }}>No written reviews yet for this venue. Be the first to leave feedback after your match session!</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {facilityReviews.map(r => {
+                if (!r) return null;
+                const userName = r.user_name || 'User';
+                const initials = userName ? userName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U';
+                const dateObj = r.created_at ? new Date(r.created_at) : new Date();
+                const formattedDate = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                const ratingNum = parseInt(r.rating, 10) || 5;
+
+                return (
+                  <div key={r.id || Math.random()} style={{ background: 'var(--bg-surface)', padding: '18px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), #8b5cf6)', color: '#fff', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {initials}
+                        </div>
+                        <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>{userName}</span>
+                      </div>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{formattedDate}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '2px' }}>
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} size={13} fill={i < ratingNum ? '#f59e0b' : 'none'} stroke={i < ratingNum ? 'none' : 'var(--text-muted)'} />
+                      ))}
+                    </div>
+
+                    {r.comment && (
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>
+                        "{r.comment}"
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
       </div>

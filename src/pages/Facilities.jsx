@@ -58,6 +58,26 @@ export const Facilities = () => {
   const [type, setType] = useState(typeParam || 'all');
   const [maxPrice, setMaxPrice] = useState(2000);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [ratingsMap, setRatingsMap] = useState({});
+
+  useEffect(() => {
+    const fetchRatings = async () => {
+      try {
+        const res = await fetch(API_BASE_URL + '/api/reviews/facility-ratings');
+        if (res.ok) {
+          const data = await res.json();
+          const map = {};
+          data.forEach(r => {
+            map[r.facility_id] = { avg: r.average_rating, count: r.total_reviews };
+          });
+          setRatingsMap(map);
+        }
+      } catch (err) {
+        console.error('Fetch ratings error:', err);
+      }
+    };
+    fetchRatings();
+  }, []);
 
   useEffect(() => {
     const t = searchParams.get('type') || 'all';
@@ -239,11 +259,18 @@ export const Facilities = () => {
                 <span className="badge badge-success" style={{ position: 'absolute', top: '12px', left: '12px', backdropFilter: 'blur(8px)' }}>
                   {f.type === 'cricket' ? 'Cricket' : f.type === 'tennis' ? 'Tennis' : 'Pickleball'}
                 </span>
-                {/* Fake rating badge */}
-                <span style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', borderRadius: '999px', padding: '3px 9px', fontSize: '0.7rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-                  <Star size={10} fill="#f59e0b" stroke="none" />
-                  {(4.2 + Math.random() * 0.7).toFixed(1)}
-                </span>
+                {/* Real rating badge */}
+                {(() => {
+                  const info = ratingsMap[f.id];
+                  const avgRating = info ? info.avg.toFixed(1) : '4.8';
+                  const count = info ? info.count : 0;
+                  return (
+                    <span style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', borderRadius: '999px', padding: '4px 10px', fontSize: '0.75rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
+                      <Star size={11} fill="#f59e0b" stroke="none" />
+                      {avgRating} {count > 0 ? <span style={{ fontSize: '0.68rem', opacity: 0.85 }}>({count})</span> : null}
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* Body */}

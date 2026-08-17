@@ -104,9 +104,19 @@ export const initDb = async () => {
         end_time TIME NOT NULL,
         total_price NUMERIC(10, 2) NOT NULL,
         status VARCHAR(50) DEFAULT 'confirmed',
+        is_extended BOOLEAN DEFAULT FALSE,
+        original_start_time TIME,
+        original_end_time TIME,
+        extended_slots JSONB DEFAULT '[]',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Ensure extension columns exist on existing databases
+    await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_extended BOOLEAN DEFAULT FALSE;`);
+    await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS original_start_time TIME;`);
+    await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS original_end_time TIME;`);
+    await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS extended_slots JSONB DEFAULT '[]';`);
 
     // 4. Seed default Admin and User if empty
     const userCheck = await query('SELECT COUNT(*) FROM users');
@@ -410,6 +420,19 @@ export const initDb = async () => {
     // NOTE: Do NOT overwrite image_url on restart — admin may have updated them via dashboard.
 
 
+
+    // 9. Create Reviews Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE UNIQUE,
+        facility_id INTEGER REFERENCES facilities(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
     console.log('Database initialization completed successfully.');
   } catch (err) {

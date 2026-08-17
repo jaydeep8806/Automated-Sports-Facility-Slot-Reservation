@@ -1,8 +1,18 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { query } from '../db.js';
 import { auth, admin } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Helper: Format date to local YYYY-MM-DD
+const formatToYYYYMMDD = (d) => {
+  const dateObj = new Date(d);
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 // @route   GET /api/facilities/time
 // @desc    Return current server time in IST (used by frontend for 2-hour booking rule)
@@ -94,10 +104,10 @@ router.get('/:id', async (req, res) => {
 
 // @route   GET /api/facilities/:id/slots
 // @desc    Check slot availability for a specific facility on a given date
-// @access  Public
+// @access  Public (supports optional Authorization & extendBookingId for active booking extension)
 router.get('/:id/slots', async (req, res) => {
   const { id } = req.params;
-  const { date } = req.query; // Expecting YYYY-MM-DD
+  const { date, extendBookingId } = req.query; // Expecting YYYY-MM-DD
 
   if (!date) {
     return res.status(400).json({ message: 'Please provide a date query parameter (YYYY-MM-DD).' });
@@ -111,25 +121,6 @@ router.get('/:id/slots', async (req, res) => {
     }
     const { open_time, close_time, slot_duration, price_per_hour } = facRes.rows[0];
 
-    // 2. Fetch confirmed bookings for this facility on the given date
-    const bookingsRes = await query(
-      "SELECT start_time, end_time FROM bookings WHERE facility_id = $1 AND date = $2 AND status = 'confirmed'",
-      [id, date]
-    );
-    const confirmedBookings = bookingsRes.rows.map(b => ({
-      start: timeToMinutes(b.start_time),
-      end: timeToMinutes(b.end_time),
-    }));
-
-    // 3. Generate slots
-    const startMin = timeToMinutes(open_time);
-    // Treat 23:59 as midnight (1440 min) so the 23:00-24:00 slot is included
-    const rawEndMin = timeToMinutes(close_time);
-    const endMin = (rawEndMin === 1439 || rawEndMin === 23 * 60 + 59) ? 1440 : rawEndMin;
-    const duration = parseInt(slot_duration, 10) || 60;
-    
-    const slots = [];
-
     // Use IST server time for accurate 2-hour advance booking rule
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
@@ -141,6 +132,59 @@ router.get('/:id/slots', async (req, res) => {
     if (isToday) {
       currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
     }
+
+    // 2. Check if valid active-booking extension request
+    let isExtendValid = false;
+    let extendBooking = null;
+
+    if (extendBookingId && isToday) {
+      const token = req.header('Authorization')?.replace('Bearer ', '');
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          const bRes = await query(
+            "SELECT * FROM bookings WHERE id = $1 AND facility_id = $2 AND status = 'confirmed'",
+            [extendBookingId, id]
+          );
+          if (bRes.rows.length > 0) {
+            const b = bRes.rows[0];
+            if (b.user_id === decoded.id || decoded.role === 'admin') {
+              const bDateStr = formatToYYYYMMDD(b.date);
+              const bStartMin = timeToMinutes(b.start_time);
+              const bEndMin = timeToMinutes(b.end_time);
+              // Active today and currently in progress or not completed
+              if (bDateStr === todayStr && bStartMin <= currentMinutes && currentMinutes < bEndMin) {
+                isExtendValid = true;
+                extendBooking = b;
+              }
+            }
+          }
+        } catch (authErr) {
+          console.warn('Extend booking token verification ignored:', authErr.message);
+        }
+      }
+    }
+
+    // 3. Fetch confirmed bookings for this facility on the given date (excluding extending booking if valid)
+    const bookingsRes = await query(
+      "SELECT id, start_time, end_time FROM bookings WHERE facility_id = $1 AND date = $2 AND status = 'confirmed'",
+      [id, date]
+    );
+    const confirmedBookings = bookingsRes.rows
+      .filter(b => !isExtendValid || String(b.id) !== String(extendBookingId))
+      .map(b => ({
+        start: timeToMinutes(b.start_time),
+        end: timeToMinutes(b.end_time),
+      }));
+
+    // 4. Generate slots
+    const startMin = timeToMinutes(open_time);
+    // Treat 23:59 as midnight (1440 min) so the 23:00-24:00 slot is included
+    const rawEndMin = timeToMinutes(close_time);
+    const endMin = (rawEndMin === 1439 || rawEndMin === 23 * 60 + 59) ? 1440 : rawEndMin;
+    const duration = parseInt(slot_duration, 10) || 60;
+    
+    const slots = [];
 
     // 2-hour advance booking buffer (120 minutes)
     const ADVANCE_BUFFER_MINUTES = 120;
@@ -155,8 +199,8 @@ router.get('/:id/slots', async (req, res) => {
       // Slot is in the past (already passed)
       const isPast = isToday && slotStart < currentMinutes;
 
-      // Slot is too soon — starts within the next 2 hours (but hasn't passed yet)
-      const isTooSoon = isToday && !isPast && slotStart < currentMinutes + ADVANCE_BUFFER_MINUTES;
+      // Slot is too soon — only apply 2-hour buffer for normal bookings (waived for valid active extensions)
+      const isTooSoon = isToday && !isPast && !isExtendValid && (slotStart < currentMinutes + ADVANCE_BUFFER_MINUTES);
 
       // Check overlap with any confirmed bookings
       const isBooked = confirmedBookings.some(booking => {
@@ -177,6 +221,13 @@ router.get('/:id/slots', async (req, res) => {
     res.json({
       date,
       facilityId: parseInt(id, 10),
+      isExtensionMode: isExtendValid,
+      activeBooking: isExtendValid ? {
+        id: extendBooking.id,
+        startTime: extendBooking.start_time.slice(0, 5),
+        endTime: extendBooking.end_time.slice(0, 5),
+        totalPrice: parseFloat(extendBooking.total_price)
+      } : null,
       slots
     });
   } catch (err) {

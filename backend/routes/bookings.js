@@ -321,7 +321,7 @@ const minutesToTime = (totalMinutes) => {
 };
 
 // @route   GET /api/bookings/:id/check-extension
-// @desc    Check if an active booking can be extended to the next consecutive slot
+// @desc    Check if an active booking can be extended to upcoming consecutive slot(s)
 // @access  Private
 router.get('/:id/check-extension', auth, async (req, res) => {
   const { id } = req.params;
@@ -406,6 +406,15 @@ router.get('/:id/check-extension', auth, async (req, res) => {
 
     return res.json({
       canExtend: true,
+      booking: {
+        id: booking.id,
+        facilityId: booking.facility_id,
+        facilityName: booking.facility_name,
+        date: bookingDateStr,
+        startTime: booking.start_time.slice(0, 5),
+        endTime: booking.end_time.slice(0, 5),
+        pricePerHour: price
+      },
       nextSlot: {
         startTime: nextStartTimeStr.slice(0, 5),
         endTime: nextEndTimeStr.slice(0, 5),
@@ -420,16 +429,17 @@ router.get('/:id/check-extension', auth, async (req, res) => {
 });
 
 // @route   POST /api/bookings/:id/extend
-// @desc    Extend an active booking with payment confirmation
+// @desc    Extend an active booking with one or multiple consecutive slots
 // @access  Private
 router.post('/:id/extend', auth, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
   const userRole = req.user.role;
+  const { slots, additionalPrice, startTime, endTime } = req.body;
 
   try {
     const bookingRes = await query(
-      `SELECT b.*, f.name AS facility_name, f.price_per_hour, f.close_time, f.open_time, f.slot_duration 
+      `SELECT b.*, f.name AS facility_name, f.location AS facility_location, f.type AS facility_type, f.price_per_hour, f.close_time, f.open_time, f.slot_duration 
        FROM bookings b
        JOIN facilities f ON b.facility_id = f.id
        WHERE b.id = $1`,
@@ -464,52 +474,114 @@ router.post('/:id/extend', auth, async (req, res) => {
     const startMin = timeToMinutes(booking.start_time);
     const endMin = timeToMinutes(booking.end_time);
 
-    if (currentMinutes < startMin || currentMinutes >= endMin) {
-      return res.status(400).json({ message: 'Extensions can only be made while your booking is currently in progress.' });
+    // Normalize slots to array
+    let slotsToExtend = [];
+    if (slots && Array.isArray(slots) && slots.length > 0) {
+      slotsToExtend = slots;
+    } else if (startTime && endTime) {
+      slotsToExtend = [{ startTime, endTime, price: parseFloat(additionalPrice) || parseFloat(booking.price_per_hour) }];
+    } else {
+      // Default to 1 consecutive slot if no slot passed
+      const slotDuration = parseInt(booking.slot_duration, 10) || 60;
+      const nextStartMin = endMin;
+      const nextEndMin = nextStartMin + slotDuration;
+      slotsToExtend = [{
+        startTime: minutesToTime(nextStartMin).slice(0, 5),
+        endTime: minutesToTime(nextEndMin).slice(0, 5),
+        price: parseFloat(booking.price_per_hour)
+      }];
     }
 
-    const slotDuration = parseInt(booking.slot_duration, 10) || 60;
-    const nextStartMin = endMin;
-    const nextEndMin = nextStartMin + slotDuration;
+    // Sort slots by start time
+    slotsToExtend.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
 
-    const rawCloseMin = timeToMinutes(booking.close_time);
-    const closeMin = (rawCloseMin === 1439 || rawCloseMin === 23 * 60 + 59) ? 1440 : rawCloseMin;
-
-    if (nextEndMin > closeMin) {
-      return res.status(400).json({ message: 'Facility is closing. Next slot is unavailable.' });
+    // Validate that slots connect directly to booking end_time
+    const firstSlotStartMin = timeToMinutes(slotsToExtend[0].startTime);
+    if (firstSlotStartMin !== endMin) {
+      return res.status(400).json({ 
+        message: `Extended slots must start immediately after your current booking end time (${booking.end_time.slice(0, 5)}).` 
+      });
     }
 
-    const nextStartTimeStr = minutesToTime(nextStartMin);
-    const nextEndTimeStr = minutesToTime(nextEndMin);
+    // Validate consecutiveness of all slots
+    for (let i = 0; i < slotsToExtend.length; i++) {
+      const s = slotsToExtend[i];
+      const sStartMin = timeToMinutes(s.startTime);
+      const sEndMin = timeToMinutes(s.endTime);
 
-    const conflictRes = await query(
-      `SELECT * FROM bookings 
-       WHERE facility_id = $1 
-         AND date = $2 
-         AND status = 'confirmed' 
-         AND id != $3
-         AND (start_time < $5 AND end_time > $4)`,
-      [booking.facility_id, bookingDateStr, booking.id, nextStartTimeStr, nextEndTimeStr]
-    );
+      if (i > 0) {
+        const prevSlotEndMin = timeToMinutes(slotsToExtend[i - 1].endTime);
+        if (sStartMin !== prevSlotEndMin) {
+          return res.status(400).json({ message: 'Extended slots must be consecutive without gaps.' });
+        }
+      }
 
-    if (conflictRes.rows.length > 0) {
-      return res.status(400).json({ message: 'The next consecutive slot is already booked.' });
+      // Facility close time check
+      const rawCloseMin = timeToMinutes(booking.close_time);
+      const closeMin = (rawCloseMin === 1439 || rawCloseMin === 23 * 60 + 59) ? 1440 : rawCloseMin;
+      if (sEndMin > closeMin) {
+        return res.status(400).json({ message: `Slot (${s.startTime} - ${s.endTime}) exceeds facility closing time.` });
+      }
+
+      // Check conflict with other confirmed bookings
+      const sStartStr = minutesToTime(sStartMin);
+      const sEndStr = minutesToTime(sEndMin);
+      const conflictRes = await query(
+        `SELECT * FROM bookings 
+         WHERE facility_id = $1 
+           AND date = $2 
+           AND status = 'confirmed' 
+           AND id != $3
+           AND (start_time < $5 AND end_time > $4)`,
+        [booking.facility_id, bookingDateStr, booking.id, sStartStr, sEndStr]
+      );
+
+      if (conflictRes.rows.length > 0) {
+        return res.status(400).json({ 
+          message: `Slot (${s.startTime} - ${s.endTime}) is already booked by another player.` 
+        });
+      }
     }
 
-    const additionalPrice = parseFloat(booking.price_per_hour);
+    const calculatedAddPrice = slotsToExtend.reduce((sum, s) => sum + (parseFloat(s.price) || parseFloat(booking.price_per_hour)), 0);
+    const finalAddPrice = additionalPrice ? parseFloat(additionalPrice) : calculatedAddPrice;
+    const finalEndMin = timeToMinutes(slotsToExtend[slotsToExtend.length - 1].endTime);
+    const finalEndTimeStr = minutesToTime(finalEndMin);
 
-    // Update existing booking with extended duration and updated total price
+    // Update booking in database
     const updateRes = await query(
       `UPDATE bookings 
-       SET end_time = $1, total_price = total_price + $2 
-       WHERE id = $3 
+       SET 
+         original_start_time = COALESCE(original_start_time, start_time),
+         original_end_time = COALESCE(original_end_time, end_time),
+         end_time = $1, 
+         total_price = total_price + $2,
+         is_extended = TRUE,
+         extended_slots = COALESCE(extended_slots, '[]'::jsonb) || $3::jsonb
+       WHERE id = $4 
        RETURNING *`,
-      [nextEndTimeStr, additionalPrice, booking.id]
+      [finalEndTimeStr, finalAddPrice, JSON.stringify(slotsToExtend), booking.id]
     );
+
+    const updatedBooking = updateRes.rows[0];
+
+    // Asynchronously send extension confirmation email
+    sendBookingConfirmationEmail(req.user.email, {
+      userName: req.user.name,
+      bookingIds: [booking.id],
+      sportName: booking.facility_type,
+      venueName: booking.facility_name,
+      venueLocation: booking.facility_location,
+      date: bookingDateStr,
+      slots: slotsToExtend,
+      totalPrice: finalAddPrice,
+      isExtension: true,
+      newEndTime: finalEndTimeStr.slice(0, 5)
+    }).catch(err => console.error('Failed to send extension email:', err));
 
     res.json({
       message: 'Booking extended successfully!',
-      booking: updateRes.rows[0]
+      booking: updatedBooking
     });
 
   } catch (err) {

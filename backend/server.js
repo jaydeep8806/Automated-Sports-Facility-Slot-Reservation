@@ -8,6 +8,7 @@ import facilitiesRouter from './routes/facilities.js';
 import bookingsRouter from './routes/bookings.js';
 import canteenRouter from './routes/canteen.js';
 import usersRouter from './routes/users.js';
+import reviewsRouter from './routes/reviews.js';
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.use('/api/facilities', facilitiesRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/canteen', canteenRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/reviews', reviewsRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

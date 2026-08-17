@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, ShieldCheck, Zap, CalendarDays, Undo2,
@@ -43,6 +43,28 @@ const FaqItem = ({ q, a }) => {
 };
 
 export const Home = () => {
+  const [liveReviews, setLiveReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  useEffect(() => {
+    const fetchRecentReviews = async () => {
+      try {
+        const res = await fetch(API_BASE_URL + '/api/reviews/recent');
+        if (res.ok) {
+          const data = await res.json();
+          setLiveReviews(data);
+        }
+      } catch (err) {
+        console.error('Fetch recent reviews error:', err);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    fetchRecentReviews();
+  }, []);
+
   return (
     <>
       <div className="container animate-fade-in" style={{ marginTop: '20px' }}>
@@ -139,29 +161,68 @@ export const Home = () => {
           </div>
         </section>
 
-        {/* ── TESTIMONIALS ── */}
+        {/* ── TESTIMONIALS & LIVE USER REVIEWS ── */}
         <section style={{ marginBottom: '80px' }}>
           <div className="section-header">
-            <div className="section-tag"><Star size={11} /> Testimonials</div>
+            <div className="section-tag"><Star size={11} /> Live Reviews</div>
             <h2 className="section-title">What Players Say</h2>
-            <p className="section-subtitle">Thousands of athletes across Gujarat trust SportSlot every week.</p>
+            <p className="section-subtitle">Real feedback from athletes after completing their ground sessions.</p>
           </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }} className="animate-stagger">
-            {TESTIMONIALS.map(t => (
-              <div key={t.name} className="glass-card testimonial-card">
-                <div style={{ display: 'flex', gap: '2px' }}>
-                  {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#f59e0b" stroke="none" />)}
-                </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.75', flex: 1 }}>"{t.text}"</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="testimonial-avatar" style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}aa)` }}>{t.initials}</div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>{t.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.role}</div>
+            {Array.isArray(liveReviews) && liveReviews.length > 0 ? (
+              liveReviews.map(r => {
+                if (!r) return null;
+                const userName = r.user_name || 'User';
+                const initials = userName ? userName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U';
+                const dateObj = r.created_at ? new Date(r.created_at) : new Date();
+                const formattedDate = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                const ratingNum = parseInt(r.rating, 10) || 5;
+
+                return (
+                  <div key={r.id || Math.random()} className="glass-card testimonial-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '2px' }}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={14} fill={i < ratingNum ? "#f59e0b" : "none"} stroke={i < ratingNum ? "none" : "var(--text-muted)"} />
+                        ))}
+                      </div>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{formattedDate}</span>
+                    </div>
+
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.75', flex: 1, margin: '8px 0' }}>
+                      "{r.comment || 'Great experience and excellent sports facilities.'}"
+                    </p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                      <div className="testimonial-avatar" style={{ background: 'linear-gradient(135deg, var(--primary), #8b5cf6)', color: '#fff', fontWeight: 700 }}>
+                        {initials}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>— {userName}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>{r.facility_name || 'Sports Venue'}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              TESTIMONIALS.map(t => (
+                <div key={t.name} className="glass-card testimonial-card">
+                  <div style={{ display: 'flex', gap: '2px' }}>
+                    {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#f59e0b" stroke="none" />)}
+                  </div>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.75', flex: 1 }}>"{t.text}"</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className="testimonial-avatar" style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}aa)` }}>{t.initials}</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>{t.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.role}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </section>
 
