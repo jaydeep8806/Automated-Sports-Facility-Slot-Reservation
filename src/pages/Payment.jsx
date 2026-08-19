@@ -22,6 +22,7 @@ export const Payment = () => {
     facilityId,
     facilityName,
     facilityLocation,
+    facilityType = '',
     date,
     originalStartTime = null,
     originalEndTime = null,
@@ -63,6 +64,7 @@ export const Payment = () => {
           body: JSON.stringify({
             slots: selectedSlots.map(s => ({ startTime: s.startTime, endTime: s.endTime, price: s.price })),
             additionalPrice: totalPrice,
+            date: date
           }),
         });
 
@@ -119,7 +121,7 @@ export const Payment = () => {
 
       {/* SUCCESS VIEW */}
       {success ? (
-        <div className="glass-card animate-scale-up" style={{ padding: '48px 40px', maxWidth: '600px', margin: '0 auto', textAlign: 'center', border: '1px solid rgba(16,185,129,0.2)' }}>
+        <div className="glass-card animate-scale-up" style={{ padding: '48px 40px', maxWidth: '640px', margin: '0 auto', textAlign: 'center', border: '1px solid rgba(16,185,129,0.2)' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(16,185,129,0.1)', border: '2px solid rgb(16,185,129)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' }}>
             <ShieldCheck size={40} style={{ color: 'rgb(16,185,129)' }} />
           </div>
@@ -128,7 +130,7 @@ export const Payment = () => {
           </h2>
           <p style={{ color: 'var(--text-main)', fontSize: '1.05rem', fontWeight: 500, marginBottom: '6px' }}>
             {isExtension
-              ? <>Your session at <strong>{facilityName}</strong> has been extended to <strong>{selectedSlots[selectedSlots.length - 1]?.endTime}</strong>.</>
+              ? <>Your session at <strong>{facilityName}</strong> has been successfully extended to <strong>{selectedSlots[selectedSlots.length - 1]?.endTime}</strong>.</>
               : <>Your slot at <strong>{facilityName}</strong> is reserved.</>
             }
           </p>
@@ -143,23 +145,42 @@ export const Payment = () => {
               background: 'rgba(99, 102, 241, 0.08)',
               border: '1px solid rgba(99, 102, 241, 0.25)',
               borderRadius: '12px',
-              padding: '16px',
+              padding: '18px 20px',
               marginBottom: '24px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '6px',
-              fontSize: '0.9rem',
+              gap: '8px',
+              fontSize: '0.88rem',
               textAlign: 'left'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Updated Session Timing:</span>
-                <strong style={{ color: 'var(--primary)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Facility & Sport:</span>
+                <strong style={{ color: 'var(--text-main)' }}>{facilityName} {facilityType ? `(${facilityType})` : ''}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Date:</span>
+                <strong style={{ color: 'var(--text-main)' }}>{date}</strong>
+              </div>
+              {originalStartTime && originalEndTime && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Original Booking:</span>
+                  <span>{originalStartTime} – {originalEndTime}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Newly Extended Slots:</span>
+                <strong style={{ color: '#10b981' }}>{selectedSlots.map(s => `${s.startTime}–${s.endTime}`).join(', ')}</strong>
+              </div>
+              <div style={{ borderTop: '1px solid rgba(99, 102, 241, 0.2)', margin: '4px 0' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Updated Total Session:</span>
+                <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>
                   {originalStartTime ? `${originalStartTime} – ${selectedSlots[selectedSlots.length - 1]?.endTime}` : `${selectedSlots[0]?.startTime} – ${selectedSlots[selectedSlots.length - 1]?.endTime}`}
                 </strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Extension Amount Paid:</span>
-                <strong>₹{totalPrice.toFixed(2)}</strong>
+                <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>₹{totalPrice.toFixed(2)}</strong>
               </div>
             </div>
           )}
@@ -204,7 +225,7 @@ export const Payment = () => {
               <UtensilsCrossed size={18} /> Order Food from Canteen
             </button>
           </div>
-          <button onClick={() => navigate('/profile')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}>
+          <button onClick={() => navigate('/profile')} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 700, textDecoration: 'underline' }}>
             Go to My Bookings → Active Bookings
           </button>
         </div>
@@ -270,6 +291,13 @@ export const Payment = () => {
                   </div>
                 </div>
 
+                {facilityType && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Sport:</span>
+                    <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{facilityType}</span>
+                  </div>
+                )}
+
                 {isExtension && originalStartTime && originalEndTime && (
                   <div style={{
                     padding: '10px 12px',
@@ -281,7 +309,7 @@ export const Payment = () => {
                     flexDirection: 'column',
                     gap: '4px'
                   }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Current Session (Paid):</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Current Booking Time (Paid):</span>
                     <strong style={{ color: 'var(--text-main)' }}>{originalStartTime} – {originalEndTime}</strong>
                   </div>
                 )}
@@ -293,17 +321,38 @@ export const Payment = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Clock size={14} /> {isExtension ? 'Added Extension Slots' : 'Time Slots'} ({selectedSlots.length})
+                    <Clock size={14} /> {isExtension ? 'Newly Selected Extension Slot(s)' : 'Time Slots'} ({selectedSlots.length})
                   </span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '20px' }}>
                     {selectedSlots.map((s, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                        <span>• {s.startTime} - {s.endTime}</span>
-                        <span style={{ fontWeight: 500 }}>₹{parseFloat(s.price).toFixed(2)}</span>
+                        <span>• {s.startTime} – {s.endTime}</span>
+                        <span style={{ fontWeight: 600 }}>₹{parseFloat(s.price).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                    {isExtension ? 'Additional Duration:' : 'Total Duration:'}
+                  </span>
+                  <span style={{ fontWeight: 600 }}>{selectedSlots.length} {selectedSlots.length === 1 ? 'Hour' : 'Hours'}</span>
+                </div>
+
+                {isExtension && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Hourly Rate:</span>
+                    <span style={{ fontWeight: 600 }}>₹{(totalPrice / (selectedSlots.length || 1)).toFixed(2)}</span>
+                  </div>
+                )}
+
+                {isExtension && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Additional Amount:</span>
+                    <span style={{ fontWeight: 700 }}>₹{totalPrice.toFixed(2)}</span>
+                  </div>
+                )}
 
                 {isExtension && originalStartTime && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(99, 102, 241, 0.08)', padding: '8px 12px', borderRadius: '8px' }}>
@@ -317,14 +366,14 @@ export const Payment = () => {
                 <div style={{ borderBottom: '2px solid var(--card-border)', paddingBottom: '12px', marginTop: '8px' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '1.05rem', fontWeight: 700 }}>
-                    {isExtension ? 'Payable for Extension:' : 'Total Chargeable:'}
+                    {isExtension ? 'Final Additional Payment:' : 'Total Chargeable:'}
                   </span>
                   <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--primary)' }}>₹{totalPrice.toFixed(2)}</span>
                 </div>
 
                 {isExtension && (
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                    ℹ️ You are only being charged for the newly added {selectedSlots.length} slot(s). Your current booking remains active.
+                    ℹ️ Only charging for the newly selected {selectedSlots.length} extension slot(s). Your current booking remains active.
                   </p>
                 )}
               </div>

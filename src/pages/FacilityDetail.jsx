@@ -9,6 +9,7 @@ const timeToMinutes = (timeStr) => {
   const parts = timeStr.split(':');
   const hours = parseInt(parts[0], 10);
   const minutes = parseInt(parts[1], 10);
+  if (hours === 24) return 1440;
   return hours * 60 + minutes;
 };
 
@@ -225,13 +226,13 @@ export const FacilityDetail = () => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   };
-  const [selectedDate, setSelectedDate] = useState(getTodayStr());
+  const initialDate = (location.state?.originalBooking?.date || '').slice(0, 10) || getTodayStr();
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [slots, setSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlots, setSelectedSlots] = useState([]);
 
   // Booking submit states
-  const [bookingLoading, setBookingLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -266,11 +267,12 @@ export const FacilityDetail = () => {
         if (res.ok) {
           const data = await res.json();
           setServerTodayStr(data.istDateStr);
-          // Set selected date to server's IST today if it differs from local
-          setSelectedDate(data.istDateStr);
+          // If not in extend mode with a preselected booking date, sync selected date to IST today
+          if (!extendBookingId && !location.state?.originalBooking) {
+            setSelectedDate(data.istDateStr);
+          }
         }
       } catch {
-        // Fallback to local date
         setServerTodayStr(getTodayStr());
       }
     };
@@ -312,7 +314,7 @@ export const FacilityDetail = () => {
         setSlots(data.slots || []);
         if (data.isExtensionMode && data.activeBooking) {
           setIsExtendMode(true);
-          setActiveBookingInfo(prev => prev || data.activeBooking);
+          setActiveBookingInfo(prev => ({ ...(prev || {}), ...data.activeBooking }));
         }
       } else {
         const data = await response.json();
@@ -337,7 +339,7 @@ export const FacilityDetail = () => {
     if (slot.booked || slot.isPast || slot.isTooSoon) return;
 
     if (!isExtendMode || !activeBookingInfo) {
-      // Normal booking flow
+      // Normal booking flow: toggle slot selection
       if (selectedSlots.some(s => s.startTime === slot.startTime)) {
         setSelectedSlots(selectedSlots.filter(s => s.startTime !== slot.startTime));
       } else {
@@ -349,7 +351,7 @@ export const FacilityDetail = () => {
 
     // Extend Mode Flow
     const currentBookingEnd = (activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5);
-    const currentBookingDate = activeBookingInfo.date || (activeBookingInfo.dateStr) || serverTodayStr || getTodayStr();
+    const currentBookingDate = (activeBookingInfo.date || activeBookingInfo.bDateStr || '').slice(0, 10) || serverTodayStr || getTodayStr();
     const rawEnd = timeToMinutes(currentBookingEnd);
     const currentBookingEndMin = (rawEnd === 0 && (currentBookingEnd.startsWith('00') || currentBookingEnd.startsWith('24'))) || rawEnd === 1440 || rawEnd === 1439 ? 1440 : rawEnd;
 
@@ -366,7 +368,7 @@ export const FacilityDetail = () => {
       return;
     }
 
-    // Available slots on selectedDate after minAllowedStartMin
+    // Available slots on selectedDate at or after minAllowedStartMin
     const availableSlotsSorted = slots
       .filter(s => !s.booked && !s.isPast && !s.isTooSoon && timeToMinutes(s.startTime) >= minAllowedStartMin)
       .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
@@ -374,14 +376,17 @@ export const FacilityDetail = () => {
     const isAlreadySelected = selectedSlots.some(s => s.startTime === slot.startTime);
 
     if (isAlreadySelected) {
-      // Unselect this slot and any slots that were selected after it
+      // Deselect this slot and any slots that were selected after it
       const remaining = selectedSlots.filter(s => timeToMinutes(s.startTime) < timeToMinutes(slot.startTime));
       setSelectedSlots(remaining);
       setErrorMessage('');
     } else {
-      // Connect consecutive slots up to clicked slot
+      // Connect consecutive slots from minAllowedStartMin up to clicked slot
       const targetIndex = availableSlotsSorted.findIndex(s => s.startTime === slot.startTime);
-      if (targetIndex === -1) return;
+      if (targetIndex === -1) {
+        setErrorMessage(`Slot ${slot.startTime} – ${slot.endTime} is not available for extension.`);
+        return;
+      }
 
       let isContiguous = true;
       const toSelect = [];
@@ -398,7 +403,7 @@ export const FacilityDetail = () => {
       }
 
       if (!isContiguous) {
-        setErrorMessage(`Cannot select slot (${slot.startTime} - ${slot.endTime}) because intermediate slots are booked or unavailable. Extended slots must connect consecutively to your current match session.`);
+        setErrorMessage(`Cannot select slot (${slot.startTime} – ${slot.endTime}) because intermediate slots are booked or unavailable. Extended slots must connect consecutively to your current match session.`);
         return;
       }
 
@@ -417,9 +422,10 @@ export const FacilityDetail = () => {
         facilityId: id,
         facilityName: facility.name,
         facilityLocation: facility.location,
+        facilityType: facility.type,
         date: selectedDate,
-        originalStartTime: activeBookingInfo ? (activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5) : null,
-        originalEndTime: activeBookingInfo ? (activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5) : null,
+        originalStartTime: activeBookingInfo ? (activeBookingInfo.originalStartTime || activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5) : null,
+        originalEndTime: activeBookingInfo ? (activeBookingInfo.originalEndTime || activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5) : null,
         originalTotalPrice: activeBookingInfo ? parseFloat(activeBookingInfo.totalPrice || activeBookingInfo.total_price || 0) : 0,
         selectedSlots: selectedSlots,
         totalPrice: totalPrice
@@ -600,28 +606,34 @@ export const FacilityDetail = () => {
             {/* Extend Notice Banner OR 2-Hour Advance Notice Banner */}
             {isExtendMode && activeBookingInfo ? (
               <div style={{
-                display: 'flex', alignItems: 'flex-start', gap: '12px',
+                display: 'flex', alignItems: 'flex-start', gap: '14px',
                 background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.12))',
                 border: '1.5px solid var(--primary)',
                 borderRadius: '12px',
-                padding: '16px 20px',
+                padding: '18px 20px',
                 marginBottom: '24px',
                 fontSize: '0.88rem',
                 color: 'var(--text-main)',
               }}>
-                <Sparkles size={20} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
+                <Sparkles size={22} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
                 <div style={{ width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                    <strong style={{ color: 'var(--primary)', fontSize: '0.98rem' }}>
-                      ⚡ Extending Active Session (2-Hour Buffer Waived)
+                    <strong style={{ color: 'var(--primary)', fontSize: '1.02rem', fontWeight: 800 }}>
+                      ⚡ Extend Your Current Booking
                     </strong>
                     <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#10b981', fontWeight: 700 }}>
-                      ✓ Active Player
+                      ✓ Active Player · 2-Hour Buffer Waived
                     </span>
                   </div>
-                  <p style={{ color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.5 }}>
-                    Your current match is reserved for <strong>{(activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {(activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}</strong>.
-                    As an active player on the court, the 2-hour advance buffer is waived. You can select one or multiple consecutive available slots starting from <strong>{(activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}</strong>.
+                  <div style={{ marginTop: '8px', padding: '8px 12px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Current Booking: </span>
+                    <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>
+                      {(activeBookingInfo.originalStartTime || activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {(activeBookingInfo.originalEndTime || activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}
+                    </strong>
+                    <span style={{ fontSize: '0.8rem', color: '#10b981', marginLeft: '8px' }}>✓ Confirmed</span>
+                  </div>
+                  <p style={{ color: 'var(--text-muted)', marginTop: '8px', marginBottom: 0, fontSize: '0.84rem', lineHeight: 1.5 }}>
+                    Select additional available consecutive slots starting from <strong>{(activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}</strong> to extend your match time immediately.
                   </p>
                 </div>
               </div>
@@ -792,7 +804,7 @@ export const FacilityDetail = () => {
               />
             </div>
 
-            {/* Booking Details Card (Strictly Contained within Left Section Height) */}
+            {/* Booking Details / Extension Summary Card */}
             <div className="glass-card" style={{
               padding: '20px 22px',
               border: isExtendMode ? '1.5px solid var(--primary)' : '1px solid var(--card-border)',
@@ -817,9 +829,9 @@ export const FacilityDetail = () => {
                   flexDirection: 'column',
                   gap: '3px'
                 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Current Match Session (Already Paid):</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Current Booking Time (Paid):</span>
                   <strong style={{ color: 'var(--text-main)', fontSize: '0.85rem' }}>
-                    {(activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {(activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}
+                    {(activeBookingInfo.originalStartTime || activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {(activeBookingInfo.originalEndTime || activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}
                   </strong>
                 </div>
               )}
@@ -827,13 +839,23 @@ export const FacilityDetail = () => {
               {selectedSlots.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Selected Date:</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Facility:</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{facility.name}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Sport:</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.82rem', textTransform: 'capitalize' }}>{facility.type}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Date:</span>
                     <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{selectedDate}</span>
                   </div>
 
                   <div className="slots-scroll-container" style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '85px', overflowY: 'auto', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                      {isExtendMode ? 'Added Extension Slots' : 'Selected Slots'} ({selectedSlots.length}):
+                      {isExtendMode ? 'Newly Selected Extension Slot(s)' : 'Selected Slots'} ({selectedSlots.length}):
                     </span>
                     {selectedSlots.map((s, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', paddingLeft: '4px' }}>
@@ -856,7 +878,7 @@ export const FacilityDetail = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>New Total Match Time:</span>
                       <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--primary)' }}>
-                        {(activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {selectedSlots[selectedSlots.length - 1].endTime}
+                        {(activeBookingInfo.originalStartTime || activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {selectedSlots[selectedSlots.length - 1].endTime}
                       </span>
                     </div>
                   )}
@@ -866,14 +888,25 @@ export const FacilityDetail = () => {
                     <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>₹{parseFloat(facility.price_per_hour).toFixed(2)}</span>
                   </div>
 
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Additional Amount:</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>₹{selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}</span>
+                  </div>
+
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--border)', paddingBottom: '8px', marginTop: '2px' }}>
                     <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>
-                      {isExtendMode ? 'Payable Now (New Slots):' : 'Total Amount:'}
+                      {isExtendMode ? 'Final Additional Payment:' : 'Total Amount:'}
                     </span>
                     <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>
                       ₹{selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}
                     </span>
                   </div>
+
+                  {isExtendMode && (
+                    <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 4px 0', lineHeight: 1.4 }}>
+                      ℹ️ Only charging for the newly selected {selectedSlots.length} extension slot(s).
+                    </p>
+                  )}
 
                   {errorMessage && (
                     <div className="badge-danger" style={{ display: 'flex', gap: '8px', padding: '8px 10px', borderRadius: 'var(--radius-md)', fontSize: '0.78rem' }}>
@@ -894,7 +927,7 @@ export const FacilityDetail = () => {
                     className="btn btn-primary"
                     style={{ width: '100%', padding: '12px', fontSize: '0.9rem', background: isExtendMode ? 'linear-gradient(135deg, var(--primary), #8b5cf6)' : undefined }}
                   >
-                    {isExtendMode ? `Proceed to Pay Additional ₹${selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}` : 'Book Now (Proceed to Payment)'}
+                    {isExtendMode ? `Confirm Extension / Proceed to Payment (₹${selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)})` : 'Book Now (Proceed to Payment)'}
                   </button>
                 </div>
               ) : (

@@ -11,15 +11,21 @@ const timeToMinutes = (timeStr) => {
   const parts = timeStr.split(':');
   const hours = parseInt(parts[0], 10);
   const minutes = parseInt(parts[1], 10);
+  if (hours === 24) return 1440;
   return hours * 60 + minutes;
 };
 
 // Helper: Format date to local YYYY-MM-DD
 const formatToYYYYMMDD = (d) => {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
+  }
   const dateObj = new Date(d);
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
+  if (isNaN(dateObj.getTime())) return '';
+  const year = dateObj.getUTCFullYear();
+  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 

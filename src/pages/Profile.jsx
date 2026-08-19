@@ -21,11 +21,15 @@ export const Profile = () => {
   const timeToMinutes = (tStr) => {
     if (!tStr) return 0;
     const [h, m] = tStr.split(':').map(Number);
-    return h * 60 + m;
+    if (h === 24) return 1440;
+    return h * 60 + (m || 0);
   };
 
   const formatDateToLocalYYYYMMDD = (dateVal) => {
     if (!dateVal) return '';
+    if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
+      return dateVal.slice(0, 10);
+    }
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return '';
     const year = d.getFullYear();
@@ -685,7 +689,8 @@ export const Profile = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {displayedBookings.map((b) => {
                     const bStartMin = timeToMinutes(b.start_time);
-                    const bEndMin = timeToMinutes(b.end_time);
+                    const rawEndMin = timeToMinutes(b.end_time);
+                    const bEndMin = (rawEndMin === 0 && (b.end_time.startsWith('00') || b.end_time.startsWith('24'))) || rawEndMin === 1440 ? 1440 : rawEndMin;
                     const isPlayingNow = b.status === 'confirmed' && b.bDateStr === todayStr && bStartMin <= currentMinutes && currentMinutes < bEndMin;
                     const durationHours = ((bEndMin - bStartMin) / 60);
                     const durationText = durationHours === 1 ? '1 Hour' : `${Number.isInteger(durationHours) ? durationHours : durationHours.toFixed(1)} Hours`;

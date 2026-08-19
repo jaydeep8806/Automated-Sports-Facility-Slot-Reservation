@@ -7,10 +7,15 @@ const router = express.Router();
 
 // Helper: Format date to local YYYY-MM-DD
 const formatToYYYYMMDD = (d) => {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
+  }
   const dateObj = new Date(d);
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
+  if (isNaN(dateObj.getTime())) return '';
+  const year = dateObj.getUTCFullYear();
+  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
@@ -38,6 +43,7 @@ const timeToMinutes = (timeStr) => {
   const parts = timeStr.split(':');
   const hours = parseInt(parts[0], 10);
   const minutes = parseInt(parts[1], 10);
+  if (hours === 24) return 1440;
   return hours * 60 + minutes;
 };
 
@@ -115,11 +121,11 @@ router.get('/:id/slots', async (req, res) => {
 
   try {
     // 1. Get facility operational hours
-    const facRes = await query('SELECT open_time, close_time, slot_duration, price_per_hour FROM facilities WHERE id = $1 AND status = \'active\'', [id]);
+    const facRes = await query('SELECT id, name, type, open_time, close_time, slot_duration, price_per_hour FROM facilities WHERE id = $1 AND status = \'active\'', [id]);
     if (facRes.rows.length === 0) {
       return res.status(404).json({ message: 'Facility not found or inactive.' });
     }
-    const { open_time, close_time, slot_duration, price_per_hour } = facRes.rows[0];
+    const { name: facName, open_time, close_time, slot_duration, price_per_hour } = facRes.rows[0];
 
     // Use IST server time for accurate 2-hour advance booking rule
     const now = new Date();
@@ -150,7 +156,6 @@ router.get('/:id/slots', async (req, res) => {
             const b = bRes.rows[0];
             if (b.user_id === decoded.id || decoded.role === 'admin') {
               const bDateStr = formatToYYYYMMDD(b.date);
-              const bStartMin = timeToMinutes(b.start_time);
               const rawEndMin = timeToMinutes(b.end_time);
               const bEndMin = (rawEndMin === 0 && (b.end_time.startsWith('00') || b.end_time.startsWith('24'))) || rawEndMin === 1440 || rawEndMin === 1439 ? 1440 : rawEndMin;
 
@@ -158,9 +163,8 @@ router.get('/:id/slots', async (req, res) => {
               dObj.setDate(dObj.getDate() + 1);
               const nextDayStr = formatToYYYYMMDD(dObj);
 
-              // Active today and currently in progress
-              const isPlayingNow = (bDateStr === todayStr && bStartMin <= currentMinutes && currentMinutes < bEndMin);
-              if (isPlayingNow && (date === todayStr || (date === nextDayStr && bEndMin >= 1440))) {
+              // Allow extending confirmed bookings for today or target date
+              if ((bDateStr === todayStr || bDateStr === date) && (date === bDateStr || (date === nextDayStr && bEndMin >= 1440))) {
                 isExtendValid = true;
                 extendBooking = b;
               }
@@ -228,13 +232,18 @@ router.get('/:id/slots', async (req, res) => {
     res.json({
       date,
       facilityId: parseInt(id, 10),
+      facilityName: facName,
       isExtensionMode: isExtendValid,
       activeBooking: isExtendValid ? {
         id: extendBooking.id,
         date: formatToYYYYMMDD(extendBooking.date),
-        startTime: extendBooking.start_time.slice(0, 5),
+        startTime: (extendBooking.original_start_time || extendBooking.start_time).slice(0, 5),
         endTime: extendBooking.end_time.slice(0, 5),
-        totalPrice: parseFloat(extendBooking.total_price)
+        originalStartTime: (extendBooking.original_start_time || extendBooking.start_time).slice(0, 5),
+        originalEndTime: (extendBooking.original_end_time || extendBooking.end_time).slice(0, 5),
+        totalPrice: parseFloat(extendBooking.total_price),
+        facilityId: extendBooking.facility_id,
+        facilityName: facName
       } : null,
       slots
     });
