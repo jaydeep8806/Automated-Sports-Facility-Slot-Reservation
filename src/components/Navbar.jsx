@@ -42,28 +42,34 @@ export const Navbar = () => {
             </Link>
           )}
           {user && user.role === 'admin' && (
-            <div className="admin-nav-segmented">
-              <div 
-                className={`admin-nav-slider ${
-                  isActive('/admin') && location.search.includes('tab=users') 
-                    ? 'slide-users' 
-                    : 'slide-admin'
-                }`} 
-              />
-              <Link 
-                to="/admin" 
-                className={`admin-nav-tab${isActive('/admin') && !location.search.includes('tab=users') ? ' active' : ''}`}
-              >
-                <ShieldAlert size={14} />Admin
+            isActive('/admin') ? (
+              <div className="admin-nav-segmented animate-fade-in">
+                <div 
+                  className={`admin-nav-slider ${
+                    location.search.includes('tab=users') 
+                      ? 'slide-users' 
+                      : 'slide-admin'
+                  }`} 
+                />
+                <Link 
+                  to="/admin" 
+                  className={`admin-nav-tab${!location.search.includes('tab=users') ? ' active' : ''}`}
+                >
+                  <ShieldAlert size={14} />Admin
+                </Link>
+                <div className="admin-nav-divider" />
+                <Link 
+                  to="/admin?tab=users" 
+                  className={`admin-nav-tab${location.search.includes('tab=users') ? ' active' : ''}`}
+                >
+                  <Users size={14} />Users
+                </Link>
+              </div>
+            ) : (
+              <Link to="/admin" className="nav-link-item">
+                <ShieldAlert size={15} />Admin
               </Link>
-              <div className="admin-nav-divider" />
-              <Link 
-                to="/admin?tab=users" 
-                className={`admin-nav-tab${isActive('/admin') && location.search.includes('tab=users') ? ' active' : ''}`}
-              >
-                <Users size={14} />Users
-              </Link>
-            </div>
+            )
           )}
         </div>
 
@@ -102,32 +108,38 @@ export const Navbar = () => {
           <Link to="/facilities" className={`mobile-nav-link${isActive('/facilities') ? ' active' : ''}`}>Facilities</Link>
           {user && <Link to="/profile" className={`mobile-nav-link${isActive('/profile') ? ' active' : ''}`}><Calendar size={15} />My Bookings</Link>}
           {user && user.role === 'admin' && (
-            <div style={{ padding: '6px 0', width: '100%' }}>
-              <div className="admin-nav-segmented" style={{ width: '100%', margin: 0, display: 'flex' }}>
-                <div 
-                  className={`admin-nav-slider ${
-                    isActive('/admin') && location.search.includes('tab=users') 
-                      ? 'slide-users' 
-                      : 'slide-admin'
-                  }`} 
-                />
-                <Link 
-                  to="/admin" 
-                  className={`admin-nav-tab${isActive('/admin') && !location.search.includes('tab=users') ? ' active' : ''}`}
-                  style={{ flex: 1 }}
-                >
-                  <ShieldAlert size={14} />Admin
-                </Link>
-                <div className="admin-nav-divider" />
-                <Link 
-                  to="/admin?tab=users" 
-                  className={`admin-nav-tab${isActive('/admin') && location.search.includes('tab=users') ? ' active' : ''}`}
-                  style={{ flex: 1 }}
-                >
-                  <Users size={14} />Users
-                </Link>
+            isActive('/admin') ? (
+              <div style={{ padding: '6px 0', width: '100%' }}>
+                <div className="admin-nav-segmented" style={{ width: '100%', margin: 0, display: 'flex' }}>
+                  <div 
+                    className={`admin-nav-slider ${
+                      location.search.includes('tab=users') 
+                        ? 'slide-users' 
+                        : 'slide-admin'
+                    }`} 
+                  />
+                  <Link 
+                    to="/admin" 
+                    className={`admin-nav-tab${!location.search.includes('tab=users') ? ' active' : ''}`}
+                    style={{ flex: 1 }}
+                  >
+                    <ShieldAlert size={14} />Admin
+                  </Link>
+                  <div className="admin-nav-divider" />
+                  <Link 
+                    to="/admin?tab=users" 
+                    className={`admin-nav-tab${location.search.includes('tab=users') ? ' active' : ''}`}
+                    style={{ flex: 1 }}
+                  >
+                    <Users size={14} />Users
+                  </Link>
+                </div>
               </div>
-            </div>
+            ) : (
+              <Link to="/admin" className="mobile-nav-link">
+                <ShieldAlert size={15} />Admin
+              </Link>
+            )
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingTop: '12px', marginTop: '8px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
             {user ? (

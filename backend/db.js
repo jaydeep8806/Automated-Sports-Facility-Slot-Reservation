@@ -434,6 +434,42 @@ export const initDb = async () => {
       );
     `);
 
+    // Seed initial player reviews if empty
+    const reviewCountRes = await query('SELECT count(*) FROM reviews');
+    if (parseInt(reviewCountRes.rows[0].count, 10) === 0) {
+      const userRes = await query('SELECT id FROM users LIMIT 3');
+      const facRes = await query('SELECT id, type FROM facilities ORDER BY id ASC LIMIT 3');
+      if (userRes.rows.length > 0 && facRes.rows.length > 0) {
+        const uId = userRes.rows[0].id;
+        const starterReviews = [
+          {
+            facility_id: facRes.rows[0].id,
+            rating: 5,
+            comment: 'Great ground and the booking process was very smooth. Floodlights and pitch condition were top notch!'
+          },
+          {
+            facility_id: facRes.rows[1] ? facRes.rows[1].id : facRes.rows[0].id,
+            rating: 5,
+            comment: 'Super fast instant reservation! The court surface was clean and well maintained. Loved playing here.'
+          },
+          {
+            facility_id: facRes.rows[2] ? facRes.rows[2].id : facRes.rows[0].id,
+            rating: 5,
+            comment: 'Zero double-booking hassle and the canteen food was delivered right on time. Highly recommended!'
+          }
+        ];
+
+        for (const sr of starterReviews) {
+          await query(
+            `INSERT INTO reviews (facility_id, user_id, rating, comment)
+             VALUES ($1, $2, $3, $4)`,
+            [sr.facility_id, uId, sr.rating, sr.comment]
+          );
+        }
+        console.log('Seeded initial player reviews.');
+      }
+    }
+
     console.log('Database initialization completed successfully.');
   } catch (err) {
     console.error('Database initialization failed:', err);

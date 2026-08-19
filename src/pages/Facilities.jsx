@@ -210,14 +210,15 @@ export const Facilities = () => {
               borderRadius: '999px',
               border: type === pill.value
                 ? '2px solid var(--primary)'
-                : '2px solid var(--card-border)',
+                : '1.5px solid var(--border)',
               background: type === pill.value
-                ? 'rgba(99,102,241,0.1)'
-                : 'rgba(255,255,255,0.03)',
+                ? 'var(--primary-glow)'
+                : 'var(--bg-surface)',
               color: type === pill.value ? 'var(--primary)' : 'var(--text-muted)',
               fontWeight: type === pill.value ? 700 : 500,
               fontSize: '0.875rem',
               cursor: 'pointer',
+              boxShadow: type === pill.value ? '0 2px 8px var(--primary-glow)' : 'var(--shadow-xs)',
               transition: 'all 0.18s ease',
               whiteSpace: 'nowrap',
             }}

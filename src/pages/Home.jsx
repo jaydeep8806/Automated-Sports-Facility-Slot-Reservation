@@ -62,7 +62,24 @@ export const Home = () => {
         setReviewsLoading(false);
       }
     };
+
     fetchRecentReviews();
+
+    // Live update when new feedback is submitted
+    const handleNewFeedback = (e) => {
+      if (e.detail) {
+        setLiveReviews(prev => {
+          const exists = prev.some(r => r.id === e.detail.id || (e.detail.booking_id && r.booking_id === e.detail.booking_id));
+          if (exists) return prev;
+          return [e.detail, ...prev];
+        });
+      } else {
+        fetchRecentReviews();
+      }
+    };
+
+    window.addEventListener('new-feedback-submitted', handleNewFeedback);
+    return () => window.removeEventListener('new-feedback-submitted', handleNewFeedback);
   }, []);
 
   return (
@@ -166,62 +183,69 @@ export const Home = () => {
           <div className="section-header">
             <div className="section-tag"><Star size={11} /> Live Reviews</div>
             <h2 className="section-title">What Players Say</h2>
-            <p className="section-subtitle">Real feedback from athletes after completing their ground sessions.</p>
+            <p className="section-subtitle">Real feedback from athletes after completing their ground reservations.</p>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }} className="animate-stagger">
-            {Array.isArray(liveReviews) && liveReviews.length > 0 ? (
-              liveReviews.map(r => {
+            {reviewsLoading ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '36px 0' }}>
+                <div className="spinner" style={{ margin: '0 auto' }} />
+              </div>
+            ) : Array.isArray(liveReviews) && liveReviews.length > 0 ? (
+              liveReviews.map((r, idx) => {
                 if (!r) return null;
-                const userName = r.user_name || 'User';
-                const initials = userName ? userName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U';
+                const userName = r.user_name || 'Verified Athlete';
+                const initials = userName ? userName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'VA';
                 const dateObj = r.created_at ? new Date(r.created_at) : new Date();
                 const formattedDate = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
                 const ratingNum = parseInt(r.rating, 10) || 5;
+                const sportName = r.sport || r.facility_type || 'Sports';
+                const formattedSport = sportName.charAt(0).toUpperCase() + sportName.slice(1).toLowerCase();
 
                 return (
-                  <div key={r.id || Math.random()} className="glass-card testimonial-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', gap: '2px' }}>
+                  <div key={r.id || idx} className="glass-card testimonial-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', padding: '24px', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', gap: '3px' }}>
                         {[...Array(5)].map((_, i) => (
-                          <Star key={i} size={14} fill={i < ratingNum ? "#f59e0b" : "none"} stroke={i < ratingNum ? "none" : "var(--text-muted)"} />
+                          <Star
+                            key={i}
+                            size={16}
+                            fill={i < ratingNum ? "#f59e0b" : "none"}
+                            stroke={i < ratingNum ? "none" : "var(--text-muted)"}
+                            style={{ filter: i < ratingNum ? 'drop-shadow(0 0 4px rgba(245,158,11,0.4))' : 'none' }}
+                          />
                         ))}
                       </div>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{formattedDate}</span>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{formattedDate}</span>
                     </div>
 
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.75', flex: 1, margin: '8px 0' }}>
-                      "{r.comment || 'Great experience and excellent sports facilities.'}"
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', lineHeight: '1.75', flex: 1, margin: '0 0 16px 0', fontStyle: 'italic' }}>
+                      "{r.comment || 'Great experience and seamless booking process.'}"
                     </p>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
-                      <div className="testimonial-avatar" style={{ background: 'linear-gradient(135deg, var(--primary), #8b5cf6)', color: '#fff', fontWeight: 700 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+                      <div className="testimonial-avatar" style={{ background: 'linear-gradient(135deg, var(--primary), #8b5cf6)', color: '#fff', fontWeight: 700, flexShrink: 0 }}>
                         {initials}
                       </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>— {userName}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>{r.facility_name || 'Sports Venue'}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          — {userName}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600 }}>
+                          Sports: {formattedSport}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          Facility: {r.facility_name || 'Sports Venue'}
+                        </div>
                       </div>
                     </div>
                   </div>
                 );
               })
             ) : (
-              TESTIMONIALS.map(t => (
-                <div key={t.name} className="glass-card testimonial-card">
-                  <div style={{ display: 'flex', gap: '2px' }}>
-                    {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#f59e0b" stroke="none" />)}
-                  </div>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.75', flex: 1 }}>"{t.text}"</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div className="testimonial-avatar" style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}aa)` }}>{t.initials}</div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>{t.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.role}</div>
-                    </div>
-                  </div>
-                </div>
-              ))
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>
+                No player reviews yet. Complete a booking to leave the first review!
+              </div>
             )}
           </div>
         </section>

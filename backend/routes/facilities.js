@@ -137,7 +137,7 @@ router.get('/:id/slots', async (req, res) => {
     let isExtendValid = false;
     let extendBooking = null;
 
-    if (extendBookingId && isToday) {
+    if (extendBookingId) {
       const token = req.header('Authorization')?.replace('Bearer ', '');
       if (token) {
         try {
@@ -151,9 +151,16 @@ router.get('/:id/slots', async (req, res) => {
             if (b.user_id === decoded.id || decoded.role === 'admin') {
               const bDateStr = formatToYYYYMMDD(b.date);
               const bStartMin = timeToMinutes(b.start_time);
-              const bEndMin = timeToMinutes(b.end_time);
-              // Active today and currently in progress or not completed
-              if (bDateStr === todayStr && bStartMin <= currentMinutes && currentMinutes < bEndMin) {
+              const rawEndMin = timeToMinutes(b.end_time);
+              const bEndMin = (rawEndMin === 0 && (b.end_time.startsWith('00') || b.end_time.startsWith('24'))) || rawEndMin === 1440 || rawEndMin === 1439 ? 1440 : rawEndMin;
+
+              const dObj = new Date(b.date);
+              dObj.setDate(dObj.getDate() + 1);
+              const nextDayStr = formatToYYYYMMDD(dObj);
+
+              // Active today and currently in progress
+              const isPlayingNow = (bDateStr === todayStr && bStartMin <= currentMinutes && currentMinutes < bEndMin);
+              if (isPlayingNow && (date === todayStr || (date === nextDayStr && bEndMin >= 1440))) {
                 isExtendValid = true;
                 extendBooking = b;
               }
@@ -224,6 +231,7 @@ router.get('/:id/slots', async (req, res) => {
       isExtensionMode: isExtendValid,
       activeBooking: isExtendValid ? {
         id: extendBooking.id,
+        date: formatToYYYYMMDD(extendBooking.date),
         startTime: extendBooking.start_time.slice(0, 5),
         endTime: extendBooking.end_time.slice(0, 5),
         totalPrice: parseFloat(extendBooking.total_price)

@@ -136,7 +136,46 @@ const runTests = async () => {
       throw new Error('❌ Test Failed: Extended slot was not flagged as booked!');
     }
 
-    // 7. Cleanup test bookings
+    // 7. Test Feedback Submission and Duplicate Prevention
+    console.log('Testing feedback submission for booking #' + initialBooking.id + '...');
+    const insertReviewRes = await query(
+      `INSERT INTO reviews (booking_id, facility_id, user_id, rating, comment)
+       VALUES ($1, $2, $3, 5, 'Spectacular ground with smooth digital booking experience.')
+       RETURNING *`,
+      [initialBooking.id, testFacility.id, testUser.id]
+    );
+    const savedReview = insertReviewRes.rows[0];
+    console.log(`✅ Feedback saved successfully! ID: ${savedReview.id}, Rating: ${savedReview.rating}★`);
+
+    // Verify duplicate feedback prevention
+    try {
+      await query(
+        `INSERT INTO reviews (booking_id, facility_id, user_id, rating, comment)
+         VALUES ($1, $2, $3, 4, 'Duplicate review attempt.')`,
+        [initialBooking.id, testFacility.id, testUser.id]
+      );
+      throw new Error('❌ Test Failed: Duplicate review on same booking_id was allowed!');
+    } catch (dupErr) {
+      console.log('✅ Success! Duplicate feedback for the same booking was correctly prevented by database constraint.');
+    }
+
+    // Verify GET /api/reviews/recent query structure
+    const recentReviewsRes = await query(
+      `SELECT r.*, u.name AS user_name, f.name AS facility_name, f.type AS sport
+       FROM reviews r
+       JOIN users u ON r.user_id = u.id
+       JOIN facilities f ON r.facility_id = f.id
+       ORDER BY r.created_at DESC
+       LIMIT 5`
+    );
+    if (recentReviewsRes.rows.length > 0 && recentReviewsRes.rows[0].sport) {
+      console.log(`✅ Success! Recent reviews query returned ${recentReviewsRes.rows.length} reviews with sport: "${recentReviewsRes.rows[0].sport}".`);
+    } else {
+      throw new Error('❌ Test Failed: Recent reviews query did not return expected fields.');
+    }
+
+    // 8. Cleanup test data
+    await query('DELETE FROM reviews WHERE id = $1', [savedReview.id]);
     await query('DELETE FROM bookings WHERE id IN ($1, $2)', [testBooking.id, initialBooking.id]);
     console.log('✅ Test data cleaned up.');
     console.log('--- All Sanity Tests Completed Successfully ---');

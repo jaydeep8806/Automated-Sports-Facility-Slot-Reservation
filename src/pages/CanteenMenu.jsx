@@ -5,9 +5,9 @@ import {
   ShoppingCart, Plus, Minus, Trash2, ChevronRight,
   Leaf, Drumstick, Search, X, UtensilsCrossed, ArrowRight
 } from 'lucide-react';
+import { FeedbackModal } from '../components/FeedbackModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
 
 const API = API_BASE_URL + '/api/canteen';
 
@@ -30,6 +30,7 @@ export const CanteenMenu = () => {
   const [cartBump, setCartBump] = useState(false); // animation trigger
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [customNote, setCustomNote] = useState('');
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const standardInstructions = [
     { id: 'spicy', label: '🌶️ Spicy' },
@@ -41,6 +42,28 @@ export const CanteenMenu = () => {
   // Refs for scroll-to-top on cart open
   const cartTopRef = useRef(null);
   const cartScrollRef = useRef(null);
+
+  // Check if feedback is required for this booking
+  useEffect(() => {
+    if (bookingId && token) {
+      const checkReviewStatus = async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/reviews/booking/${bookingId}/status`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (!data.hasReviewed) {
+              setShowFeedbackModal(true);
+            }
+          }
+        } catch (err) {
+          console.error('Check review status error:', err);
+        }
+      };
+      checkReviewStatus();
+    }
+  }, [bookingId, token]);
 
   useEffect(() => {
     const load = async () => {
@@ -643,6 +666,17 @@ export const CanteenMenu = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Feedback Popup Modal ── */}
+      {showFeedbackModal && bookingId && (
+        <FeedbackModal
+          bookingId={bookingId}
+          facilityId={facilityId}
+          facilityName={facilityName}
+          onClose={() => setShowFeedbackModal(false)}
+          onSuccess={() => setShowFeedbackModal(false)}
+        />
       )}
 
       {/* ── Styles ── */}

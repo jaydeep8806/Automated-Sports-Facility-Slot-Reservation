@@ -64,15 +64,15 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
     <div style={{
       background: 'var(--bg-surface)',
       border: '1px solid var(--card-border)',
-      borderRadius: '16px',
+      borderRadius: '12px',
       overflow: 'hidden',
       userSelect: 'none',
-      boxShadow: '0 4px 24px rgba(0,0,0,0.18)'
+      boxShadow: '0 4px 20px rgba(0,0,0,0.12)'
     }}>
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 16px',
+        padding: '9px 12px',
         background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
         color: '#fff'
       }}>
@@ -80,41 +80,41 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
           onClick={prevMonth}
           disabled={!canGoPrev}
           style={{
-            background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px',
+            background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '6px',
             color: '#fff', cursor: canGoPrev ? 'pointer' : 'not-allowed',
-            padding: '6px 8px', display: 'flex', alignItems: 'center',
+            padding: '4px 6px', display: 'flex', alignItems: 'center',
             opacity: canGoPrev ? 1 : 0.35, transition: 'opacity 0.2s'
           }}
           aria-label="Previous month"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={15} />
         </button>
-        <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.01em' }}>
+        <span style={{ fontWeight: 800, fontSize: '0.92rem', letterSpacing: '-0.01em' }}>
           {MONTHS[viewMonth]} {viewYear}
         </span>
         <button
           onClick={nextMonth}
           style={{
-            background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px',
-            color: '#fff', cursor: 'pointer', padding: '6px 8px',
+            background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '6px',
+            color: '#fff', cursor: 'pointer', padding: '4px 6px',
             display: 'flex', alignItems: 'center', transition: 'opacity 0.2s'
           }}
           aria-label="Next month"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={15} />
         </button>
       </div>
 
       {/* Day labels */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-        padding: '10px 12px 4px',
+        padding: '6px 10px 2px',
         gap: '2px'
       }}>
         {DAYS.map(d => (
           <div key={d} style={{
-            textAlign: 'center', fontSize: '0.68rem', fontWeight: 700,
-            color: 'var(--text-muted)', textTransform: 'uppercase', padding: '4px 0'
+            textAlign: 'center', fontSize: '0.65rem', fontWeight: 700,
+            color: 'var(--text-muted)', textTransform: 'uppercase', padding: '2px 0'
           }}>{d}</div>
         ))}
       </div>
@@ -122,7 +122,7 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
       {/* Date cells */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-        padding: '0 12px 14px', gap: '4px'
+        padding: '0 10px 8px', gap: '3px'
       }}>
         {cells.map((day, idx) => {
           if (!day) return <div key={`e-${idx}`} />;
@@ -154,8 +154,8 @@ const MiniCalendar = ({ value, minDateStr, onChange }) => {
               onClick={() => { if (!disabled) onChange(toStr(thisDate)); }}
               style={{
                 background: bg, color, fontWeight, border, cursor,
-                borderRadius: '8px', padding: '8px 0',
-                fontSize: '0.82rem', textAlign: 'center',
+                borderRadius: '6px', padding: '5px 0',
+                fontSize: '0.8rem', textAlign: 'center',
                 opacity: disabled ? 0.35 : 1,
                 transition: 'all 0.15s ease',
               }}
@@ -349,18 +349,26 @@ export const FacilityDetail = () => {
 
     // Extend Mode Flow
     const currentBookingEnd = (activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5);
-    const currentBookingEndMin = timeToMinutes(currentBookingEnd);
+    const currentBookingDate = activeBookingInfo.date || (activeBookingInfo.dateStr) || serverTodayStr || getTodayStr();
+    const rawEnd = timeToMinutes(currentBookingEnd);
+    const currentBookingEndMin = (rawEnd === 0 && (currentBookingEnd.startsWith('00') || currentBookingEnd.startsWith('24'))) || rawEnd === 1440 || rawEnd === 1439 ? 1440 : rawEnd;
+
+    const isNextDayExtension = selectedDate > currentBookingDate;
+
+    // Minimum start time required on the selected date:
+    // If next day extension (over midnight): starts from 00:00 (0 minutes)
+    // If same day extension: starts from currentBookingEndMin (e.g. 19:00 -> 1140 min)
+    const minAllowedStartMin = isNextDayExtension ? 0 : currentBookingEndMin;
     const slotStartMin = timeToMinutes(slot.startTime);
 
-    // In extend mode, extension must be >= current booking end time
-    if (slotStartMin < currentBookingEndMin) {
+    if (!isNextDayExtension && slotStartMin < minAllowedStartMin) {
       setErrorMessage(`Extension slots must start at or after your current session end time (${currentBookingEnd}).`);
       return;
     }
 
-    // Available slots after currentBookingEnd
+    // Available slots on selectedDate after minAllowedStartMin
     const availableSlotsSorted = slots
-      .filter(s => !s.booked && !s.isPast && !s.isTooSoon && timeToMinutes(s.startTime) >= currentBookingEndMin)
+      .filter(s => !s.booked && !s.isPast && !s.isTooSoon && timeToMinutes(s.startTime) >= minAllowedStartMin)
       .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
 
     const isAlreadySelected = selectedSlots.some(s => s.startTime === slot.startTime);
@@ -377,7 +385,7 @@ export const FacilityDetail = () => {
 
       let isContiguous = true;
       const toSelect = [];
-      let expectedStart = currentBookingEndMin;
+      let expectedStart = minAllowedStartMin;
 
       for (let i = 0; i <= targetIndex; i++) {
         const s = availableSlotsSorted[i];
@@ -575,10 +583,10 @@ export const FacilityDetail = () => {
 
         {/* ── SECOND ROW: Reservation Timing (Left) | Calendar + Booking Details (Right) ── */}
         <div className="row-grid-align-top">
-          {/* Left: Choose Reservation Timing Card (PROMINENT & SPACIOUS) */}
-          <div className="glass-card" style={{ padding: '36px', border: isExtendMode ? '1.5px solid var(--primary)' : undefined }}>
+          {/* Left: Choose Reservation Timing Card */}
+          <div className="glass-card" style={{ padding: '32px', border: isExtendMode ? '1.5px solid var(--primary)' : undefined }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <CalendarCheck2 size={22} style={{ color: 'var(--primary)' }} />
                 {isExtendMode ? 'Extend Reservation Timing' : 'Choose Reservation Timing'}
               </h2>
@@ -651,7 +659,7 @@ export const FacilityDetail = () => {
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-                gap: '14px'
+                gap: '12px'
               }}>
                 {slots.map((slot, index) => {
                   const isSelected = selectedSlots.some(s => s.startTime === slot.startTime);
@@ -709,7 +717,7 @@ export const FacilityDetail = () => {
                         title={tooltipText}
                         style={{
                           width: '100%',
-                          padding: '18px 10px',
+                          padding: '16px 8px',
                           borderRadius: 'var(--radius-md)',
                           border,
                           background,
@@ -723,10 +731,10 @@ export const FacilityDetail = () => {
                           gap: '6px',
                         }}
                       >
-                        <span style={{ fontSize: '1rem', fontWeight: 800 }}>{slot.startTime}</span>
-                        <span style={{ fontSize: '0.78rem', opacity: 0.65 }}>to {slot.endTime}</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>{slot.startTime}</span>
+                        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>to {slot.endTime}</span>
                         {statusLabel && (
-                          <span style={{ fontSize: '0.65rem', color: statusColor, fontWeight: 700, marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          <span style={{ fontSize: '0.65rem', color: statusColor, fontWeight: 600, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                             {statusLabel}
                           </span>
                         )}
@@ -739,16 +747,16 @@ export const FacilityDetail = () => {
 
             {/* Legend */}
             {slots.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '24px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '20px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--primary-glow)', border: '1.5px solid var(--primary)', display: 'inline-block' }} /> Available
                 </span>
                 {!isExtendMode && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(245,158,11,0.15)', border: '1.5px solid rgba(245,158,11,0.5)', display: 'inline-block' }} /> Too Soon (2hr rule)
                   </span>
                 )}
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--danger-glow)', border: '1.5px solid rgba(239,68,68,0.3)', display: 'inline-block' }} /> Booked
                 </span>
               </div>
@@ -758,19 +766,19 @@ export const FacilityDetail = () => {
           {/* Right Column Stack: Calendar + Booking Details below (COMPACT STACK) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            {/* Calendar Card (Compact Padding) */}
-            <div className="glass-card" style={{ padding: '16px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '6px' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+            {/* Calendar Card (Slightly Reduced Padding for Perfect Alignment) */}
+            <div className="glass-card" style={{ padding: '12px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>
                   Select Date
                 </span>
                 <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
                   background: 'var(--primary-glow)', border: '1.5px solid var(--primary)',
-                  borderRadius: '999px', padding: '4px 12px',
-                  fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)'
+                  borderRadius: '999px', padding: '3px 10px',
+                  fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)'
                 }}>
-                  <CalendarCheck2 size={13} />
+                  <CalendarCheck2 size={12} />
                   {selectedDate
                     ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
                     : 'No date selected'
@@ -784,99 +792,99 @@ export const FacilityDetail = () => {
               />
             </div>
 
-            {/* Booking Details Card (Extended Height to Match Left Card Bottom Exactly) */}
+            {/* Booking Details Card (Strictly Contained within Left Section Height) */}
             <div className="glass-card" style={{
-              padding: '28px 24px',
+              padding: '20px 22px',
               border: isExtendMode ? '1.5px solid var(--primary)' : '1px solid var(--card-border)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '14px'
+              gap: '12px'
             }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                <Sparkles size={18} style={{ color: 'var(--primary)' }} />
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <Sparkles size={17} style={{ color: 'var(--primary)' }} />
                 {isExtendMode ? 'Extension Summary' : 'Booking Details'}
               </h2>
 
               {/* Active Session Info (Extend mode only) */}
               {isExtendMode && activeBookingInfo && (
                 <div style={{
-                  padding: '12px 14px',
+                  padding: '10px 12px',
                   background: 'rgba(99, 102, 241, 0.08)',
                   border: '1px solid rgba(99, 102, 241, 0.25)',
-                  borderRadius: '10px',
-                  fontSize: '0.82rem',
+                  borderRadius: '8px',
+                  fontSize: '0.8rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '4px'
+                  gap: '3px'
                 }}>
                   <span style={{ color: 'var(--text-muted)' }}>Current Match Session (Already Paid):</span>
-                  <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>
+                  <strong style={{ color: 'var(--text-main)', fontSize: '0.85rem' }}>
                     {(activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {(activeBookingInfo.endTime || activeBookingInfo.end_time || '').slice(0, 5)}
                   </strong>
                 </div>
               )}
 
               {selectedSlots.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Selected Date:</span>
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{selectedDate}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Selected Date:</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{selectedDate}</span>
                   </div>
 
-                  <div className="slots-scroll-container" style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '133px', overflowY: 'auto', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  <div className="slots-scroll-container" style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '85px', overflowY: 'auto', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                       {isExtendMode ? 'Added Extension Slots' : 'Selected Slots'} ({selectedSlots.length}):
                     </span>
                     {selectedSlots.map((s, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', paddingLeft: '6px' }}>
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', paddingLeft: '4px' }}>
                         <span>• {s.startTime} – {s.endTime}</span>
                         <span style={{ fontWeight: 600 }}>₹{parseFloat(s.price).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                       {isExtendMode ? 'Additional Duration:' : 'Total Duration:'}
                     </span>
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>
                       {selectedSlots.length * (facility.slot_duration / 60)} {selectedSlots.length * (facility.slot_duration / 60) === 1 ? 'hour' : 'hours'}
                     </span>
                   </div>
 
                   {isExtendMode && activeBookingInfo && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>New Total Match Time:</span>
-                      <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>New Total Match Time:</span>
+                      <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--primary)' }}>
                         {(activeBookingInfo.startTime || activeBookingInfo.start_time || '').slice(0, 5)} – {selectedSlots[selectedSlots.length - 1].endTime}
                       </span>
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Hourly Rate:</span>
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>₹{parseFloat(facility.price_per_hour).toFixed(2)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Hourly Rate:</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>₹{parseFloat(facility.price_per_hour).toFixed(2)}</span>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--border)', paddingBottom: '10px', marginTop: '2px' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--border)', paddingBottom: '8px', marginTop: '2px' }}>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>
                       {isExtendMode ? 'Payable Now (New Slots):' : 'Total Amount:'}
                     </span>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)' }}>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>
                       ₹{selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}
                     </span>
                   </div>
 
                   {errorMessage && (
-                    <div className="badge-danger" style={{ display: 'flex', gap: '8px', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.82rem' }}>
-                      <ShieldAlert size={16} style={{ flexShrink: 0 }} />
+                    <div className="badge-danger" style={{ display: 'flex', gap: '8px', padding: '8px 10px', borderRadius: 'var(--radius-md)', fontSize: '0.78rem' }}>
+                      <ShieldAlert size={15} style={{ flexShrink: 0 }} />
                       <span>{errorMessage}</span>
                     </div>
                   )}
 
                   {successMessage && (
-                    <div className="badge-success" style={{ display: 'flex', gap: '8px', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.82rem' }}>
-                      <Check size={16} style={{ flexShrink: 0 }} />
+                    <div className="badge-success" style={{ display: 'flex', gap: '8px', padding: '8px 10px', borderRadius: 'var(--radius-md)', fontSize: '0.78rem' }}>
+                      <Check size={15} style={{ flexShrink: 0 }} />
                       <span>{successMessage}</span>
                     </div>
                   )}
@@ -884,14 +892,14 @@ export const FacilityDetail = () => {
                   <button
                     onClick={handleProceedToPayment}
                     className="btn btn-primary"
-                    style={{ width: '100%', padding: '13px', fontSize: '0.92rem', background: isExtendMode ? 'linear-gradient(135deg, var(--primary), #8b5cf6)' : undefined }}
+                    style={{ width: '100%', padding: '12px', fontSize: '0.9rem', background: isExtendMode ? 'linear-gradient(135deg, var(--primary), #8b5cf6)' : undefined }}
                   >
                     {isExtendMode ? `Proceed to Pay Additional ₹${selectedSlots.reduce((sum, s) => sum + parseFloat(s.price), 0).toFixed(2)}` : 'Book Now (Proceed to Payment)'}
                   </button>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <p>
+                <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  <p style={{ margin: 0, lineHeight: 1.5 }}>
                     {isExtendMode
                       ? `Please select one or multiple consecutive available slots starting from ${(activeBookingInfo?.endTime || activeBookingInfo?.end_time || '').slice(0, 5)} to extend your session.`
                       : 'Please select a date and one or more available time slots from the schedule list to view booking checkout details.'}

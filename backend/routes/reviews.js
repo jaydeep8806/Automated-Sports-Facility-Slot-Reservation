@@ -13,15 +13,8 @@ const formatToYYYYMMDD = (d) => {
   return `${year}-${month}-${day}`;
 };
 
-// Helper: Convert "HH:MM:SS" or "HH:MM" to minutes from midnight
-const timeToMinutes = (tStr) => {
-  if (!tStr) return 0;
-  const [h, m] = tStr.split(':').map(Number);
-  return h * 60 + m;
-};
-
 // @route   POST /api/reviews
-// @desc    Submit post-booking feedback/review for a completed booking
+// @desc    Submit feedback/review for a booking immediately after payment or anytime
 // @access  Private
 router.post('/', auth, async (req, res) => {
   const { bookingId, rating, comment } = req.body;
@@ -51,36 +44,18 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to submit feedback for this booking.' });
     }
 
-    // 3. Confirm booking is active (not cancelled)
+    // 3. Confirm booking is confirmed (not cancelled)
     if (booking.status === 'cancelled') {
       return res.status(400).json({ message: 'Cannot submit feedback for a cancelled booking.' });
     }
 
-    // 4. Verify match/usage has completed
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffset);
-    const todayStr = `${istNow.getUTCFullYear()}-${String(istNow.getUTCMonth() + 1).padStart(2, '0')}-${String(istNow.getUTCDate()).padStart(2, '0')}`;
-    const bookingDateStr = formatToYYYYMMDD(booking.date);
-    const currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
-
-    const isPastDate = bookingDateStr < todayStr;
-    const isEndedToday = (bookingDateStr === todayStr) && (timeToMinutes(booking.end_time) <= currentMinutes);
-    const isCompleted = isPastDate || isEndedToday;
-
-    if (!isCompleted) {
-      return res.status(400).json({ 
-        message: 'Feedback can only be submitted after your booked session is completed.' 
-      });
-    }
-
-    // 5. Prevent duplicate feedback
+    // 4. Prevent duplicate feedback for the same booking
     const existingReview = await query('SELECT id FROM reviews WHERE booking_id = $1', [bookingId]);
     if (existingReview.rows.length > 0) {
       return res.status(400).json({ message: 'Feedback has already been submitted for this booking.' });
     }
 
-    // 6. Insert new review
+    // 5. Insert new review
     const insertRes = await query(
       `INSERT INTO reviews (booking_id, facility_id, user_id, rating, comment)
        VALUES ($1, $2, $3, $4, $5)
@@ -88,9 +63,19 @@ router.post('/', auth, async (req, res) => {
       [booking.id, booking.facility_id, userId, numRating, comment ? comment.trim() : '']
     );
 
+    // 6. Fetch fully joined review for immediate frontend rendering
+    const fullReviewRes = await query(
+      `SELECT r.*, u.name AS user_name, f.name AS facility_name, f.location AS facility_location, f.type AS sport, f.type AS facility_type
+       FROM reviews r
+       JOIN users u ON r.user_id = u.id
+       JOIN facilities f ON r.facility_id = f.id
+       WHERE r.id = $1`,
+      [insertRes.rows[0].id]
+    );
+
     res.status(201).json({
       message: 'Feedback submitted successfully! Thank you.',
-      review: insertRes.rows[0]
+      review: fullReviewRes.rows[0]
     });
 
   } catch (err) {
@@ -99,24 +84,75 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/reviews/booking/:bookingId/status
+// @desc    Check if feedback has already been submitted for a specific booking
+// @access  Private
+router.get('/booking/:bookingId/status', auth, async (req, res) => {
+  const { bookingId } = req.params;
+  try {
+    const result = await query(
+      `SELECT r.*, u.name AS user_name, f.name AS facility_name, f.type AS sport
+       FROM reviews r
+       JOIN users u ON r.user_id = u.id
+       JOIN facilities f ON r.facility_id = f.id
+       WHERE r.booking_id = $1`,
+      [bookingId]
+    );
+    if (result.rows.length > 0) {
+      return res.json({ hasReviewed: true, review: result.rows[0] });
+    }
+    return res.json({ hasReviewed: false });
+  } catch (err) {
+    console.error('Check booking review status error:', err);
+    res.status(500).json({ message: 'Server error checking review status.' });
+  }
+});
+
 // @route   GET /api/reviews/recent
-// @desc    Get latest live reviews for Home Page display
+// @desc    Get latest live reviews for Home Page "What Players Say" section
 // @access  Public
 router.get('/recent', async (req, res) => {
   try {
     const result = await query(
-      `SELECT r.*, u.name AS user_name, f.name AS facility_name, f.location AS facility_location, f.type AS facility_type
+      `SELECT r.*, 
+              u.name AS user_name, 
+              f.name AS facility_name, 
+              f.location AS facility_location, 
+              f.type AS facility_type,
+              f.type AS sport
        FROM reviews r
        JOIN users u ON r.user_id = u.id
        JOIN facilities f ON r.facility_id = f.id
        ORDER BY r.created_at DESC
-       LIMIT 10`
+       LIMIT 20`
     );
 
     res.json(result.rows);
   } catch (err) {
     console.error('Fetch recent reviews error:', err);
     res.status(500).json({ message: 'Server error fetching recent reviews.' });
+  }
+});
+
+// @route   GET /api/reviews/facility/:facilityId
+// @desc    Get reviews for a specific facility
+// @access  Public
+router.get('/facility/:facilityId', async (req, res) => {
+  const { facilityId } = req.params;
+  try {
+    const result = await query(
+      `SELECT r.*, u.name AS user_name 
+       FROM reviews r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.facility_id = $1
+       ORDER BY r.created_at DESC`,
+      [facilityId]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Fetch facility reviews error:', err);
+    res.status(500).json({ message: 'Server error fetching facility reviews.' });
   }
 });
 
@@ -148,7 +184,7 @@ router.get('/my-reviews', auth, async (req, res) => {
 
   try {
     const result = await query(
-      `SELECT r.*, f.name AS facility_name 
+      `SELECT r.*, f.name AS facility_name, f.type AS sport 
        FROM reviews r
        JOIN facilities f ON r.facility_id = f.id
        WHERE r.user_id = $1

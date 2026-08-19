@@ -3,9 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   ShieldCheck, Undo2, Calendar, Clock, MapPin, Wallet,
-  Activity, UtensilsCrossed, CreditCard, QrCode, Landmark, Lock
+  Activity, UtensilsCrossed, CreditCard, QrCode, Landmark, Lock, Star
 } from 'lucide-react';
 import RazorpayModal from '../components/RazorpayModal';
+import { FeedbackModal } from '../components/FeedbackModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -33,6 +34,7 @@ export const Payment = () => {
   const [success, setSuccess] = useState(false);
   const [createdBookingIds, setCreatedBookingIds] = useState([]);
   const [updatedBooking, setUpdatedBooking] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!facilityId || selectedSlots.length === 0) {
@@ -71,6 +73,7 @@ export const Payment = () => {
         setCreatedBookingIds([extendBookingId]);
         setShowModal(false);
         setSuccess(true);
+        setShowFeedbackModal(true);
       } else {
         // Normal booking creation
         const response = await fetch(API_BASE_URL + '/api/bookings', {
@@ -90,6 +93,7 @@ export const Payment = () => {
         setCreatedBookingIds(ids);
         setShowModal(false);
         setSuccess(true);
+        setShowFeedbackModal(true);
       }
     } catch (err) {
       setErrorMsg(err.message || 'Payment processing error.');
@@ -161,6 +165,30 @@ export const Payment = () => {
           )}
 
           {errorMsg && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '16px' }}>{errorMsg}</p>}
+
+          {/* Feedback Trigger CTA in Success Card */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+            <button
+              type="button"
+              onClick={() => setShowFeedbackModal(true)}
+              className="btn"
+              style={{
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1.5px solid #f59e0b',
+                color: '#f59e0b',
+                padding: '10px 22px',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              <Star size={16} fill="#f59e0b" stroke="none" /> Share Booking Experience Feedback
+            </button>
+          </div>
 
           {/* Canteen CTA */}
           <div style={{ background: 'linear-gradient(135deg,rgba(245,158,11,0.1),rgba(239,68,68,0.08))', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
@@ -313,6 +341,17 @@ export const Payment = () => {
           merchantName={facilityName}
           onSuccess={handlePaymentSuccess}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {/* Feedback Popup Modal */}
+      {showFeedbackModal && createdBookingIds.length > 0 && (
+        <FeedbackModal
+          bookingId={createdBookingIds[0]}
+          facilityId={facilityId}
+          facilityName={facilityName}
+          onClose={() => setShowFeedbackModal(false)}
+          onSuccess={() => setShowFeedbackModal(false)}
         />
       )}
 
