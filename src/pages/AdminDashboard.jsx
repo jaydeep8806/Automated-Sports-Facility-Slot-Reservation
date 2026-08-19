@@ -12,7 +12,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const AdminDashboard = () => {
   const { token } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
 
   // Core Data
@@ -59,6 +59,19 @@ export const AdminDashboard = () => {
       setActiveTab('facilities');
     }
   }, [tabParam]);
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setSearchParams(prev => {
+      const nextParams = new URLSearchParams(prev);
+      if (newTab === 'facilities') {
+        nextParams.delete('tab');
+      } else {
+        nextParams.set('tab', newTab);
+      }
+      return nextParams;
+    });
+  };
   
   // Filtering States
   const [filterLocation, setFilterLocation] = useState('all');
@@ -186,20 +199,30 @@ export const AdminDashboard = () => {
       ordersUrl.searchParams.append('page', ordersPage);
       ordersUrl.searchParams.append('limit', ordersLimit);
 
-      const [itemsRes, ordersRes, catsRes] = await Promise.all([
+      const [itemsRes, ordersRes, catsRes] = await Promise.allSettled([
         fetch(API_BASE_URL + '/api/canteen/admin/items', { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(ordersUrl.toString(), { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(API_BASE_URL + '/api/canteen/categories')
       ]);
-      if (itemsRes.ok) setFoodItems(await itemsRes.json());
-      if (ordersRes.ok) {
-        const ordersData = await ordersRes.json();
+
+      if (itemsRes.status === 'fulfilled' && itemsRes.value.ok) {
+        const itemsData = await itemsRes.value.json();
+        setFoodItems(itemsData || []);
+      }
+      if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
+        const ordersData = await ordersRes.value.json();
         setFoodOrders(ordersData.data || []);
         setOrdersTotalPages(ordersData.pagination?.pages || 1);
       }
-      if (catsRes.ok) setCategories(await catsRes.json());
-    } catch (err) { console.error(err); }
-    finally { if (!isSilent) setCanteenLoading(false); }
+      if (catsRes.status === 'fulfilled' && catsRes.value.ok) {
+        const catsData = await catsRes.value.json();
+        setCategories(catsData || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      if (!isSilent) setCanteenLoading(false);
+    }
   };
 
   const fetchUsersData = async (isSilent = false) => {
@@ -233,8 +256,10 @@ export const AdminDashboard = () => {
       fetchUsersData(false);
     } else if (activeTab === 'canteen' || activeTab === 'food-orders') {
       fetchCanteenData(false);
+      fetchData(true);
     } else {
       fetchData(false);
+      fetchCanteenData(true); // Pre-fetch canteen items and orders so menu and orders are instantly available
     }
 
     // Auto-polling interval every 6 seconds for silent background real-time live synchronization
@@ -243,8 +268,10 @@ export const AdminDashboard = () => {
         fetchUsersData(true);
       } else if (activeTab === 'canteen' || activeTab === 'food-orders') {
         fetchCanteenData(true);
+        fetchData(true);
       } else {
         fetchData(true);
+        fetchCanteenData(true);
       }
     }, 6000);
 
@@ -1381,19 +1408,19 @@ export const AdminDashboard = () => {
 
             {/* Navigation Tabs */}
             <div className="admin-tabs-scroll">
-              <button className={`admin-tab-btn${activeTab === 'facilities' ? ' active' : ''}`} onClick={() => setActiveTab('facilities')}>
+              <button className={`admin-tab-btn${activeTab === 'facilities' ? ' active' : ''}`} onClick={() => handleTabChange('facilities')}>
                 🏟️ Facilities
                 <span className="admin-tab-badge">{facilities.length}</span>
               </button>
-              <button className={`admin-tab-btn${activeTab === 'bookings' ? ' active' : ''}`} onClick={() => setActiveTab('bookings')}>
+              <button className={`admin-tab-btn${activeTab === 'bookings' ? ' active' : ''}`} onClick={() => handleTabChange('bookings')}>
                 📅 Bookings
                 <span className="admin-tab-badge">{stats.totalBookings}</span>
               </button>
-              <button className={`admin-tab-btn${activeTab === 'canteen' ? ' active' : ''}`} onClick={() => setActiveTab('canteen')}>
+              <button className={`admin-tab-btn${activeTab === 'canteen' ? ' active' : ''}`} onClick={() => handleTabChange('canteen')}>
                 🍔 Menu
                 <span className="admin-tab-badge">{foodItems.length}</span>
               </button>
-              <button className={`admin-tab-btn${activeTab === 'food-orders' ? ' active' : ''}`} onClick={() => setActiveTab('food-orders')}>
+              <button className={`admin-tab-btn${activeTab === 'food-orders' ? ' active' : ''}`} onClick={() => handleTabChange('food-orders')}>
                 📋 Orders
                 <span className="admin-tab-badge">{foodOrders.length}</span>
               </button>
@@ -1558,39 +1585,50 @@ export const AdminDashboard = () => {
                 )}
 
                 {/* Items Table */}
-                <div className="glass-card" style={{ overflowX: 'auto', border: '1px solid var(--card-border)', padding: '16px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        <th style={{ padding: '10px' }}>ID</th>
-                        <th style={{ padding: '10px' }}>Name</th>
-                        <th style={{ padding: '10px' }}>Category</th>
-                        <th style={{ padding: '10px' }}>Price</th>
-                        <th style={{ padding: '10px' }}>Type</th>
-                        <th style={{ padding: '10px' }}>Available</th>
-                        <th style={{ padding: '10px' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody style={{ fontSize: '0.875rem' }}>
-                      {foodItems.map(item => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                          <td style={{ padding: '10px', color: 'var(--text-muted)' }}>#{item.id}</td>
-                          <td style={{ padding: '10px', fontWeight: 600 }}>{item.name}</td>
-                          <td style={{ padding: '10px', color: 'var(--text-muted)' }}>{item.category_name || '—'}</td>
-                          <td style={{ padding: '10px', fontWeight: 700, color: 'var(--primary)' }}>₹{item.price}</td>
-                          <td style={{ padding: '10px' }}><span style={{ padding: '3px 10px', borderRadius: '999px', background: item.is_veg ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: item.is_veg ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 700 }}>{item.is_veg ? '🌿 Veg' : '🍗 Non-Veg'}</span></td>
-                          <td style={{ padding: '10px' }}><span style={{ padding: '3px 10px', borderRadius: '999px', background: item.is_available ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: item.is_available ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 700 }}>{item.is_available ? 'Yes' : 'No'}</span></td>
-                          <td style={{ padding: '10px' }}>
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                              <button className="btn btn-secondary" onClick={() => openFoodItemForm(item)} style={{ padding: '6px 10px', fontSize: '0.75rem' }}><Edit size={13} /></button>
-                              <button className="btn btn-danger" onClick={() => handleDeleteFoodItem(item.id)} style={{ padding: '6px 10px', fontSize: '0.75rem' }}><Trash2 size={13} /></button>
-                            </div>
-                          </td>
+                {canteenLoading && foodItems.length === 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+                    <div className="spinner" />
+                  </div>
+                ) : foodItems.length === 0 ? (
+                  <div className="glass-card admin-empty-state" style={{ padding: '50px 20px', textAlign: 'center' }}>
+                    <UtensilsCrossed size={40} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+                    <p style={{ color: 'var(--text-muted)' }}>No food items found in canteen menu. Click "Add Item" above to add snacks & drinks.</p>
+                  </div>
+                ) : (
+                  <div className="glass-card" style={{ overflowX: 'auto', border: '1px solid var(--card-border)', padding: '16px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                          <th style={{ padding: '10px' }}>ID</th>
+                          <th style={{ padding: '10px' }}>Name</th>
+                          <th style={{ padding: '10px' }}>Category</th>
+                          <th style={{ padding: '10px' }}>Price</th>
+                          <th style={{ padding: '10px' }}>Type</th>
+                          <th style={{ padding: '10px' }}>Available</th>
+                          <th style={{ padding: '10px' }}>Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody style={{ fontSize: '0.875rem' }}>
+                        {foodItems.map(item => (
+                          <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                            <td style={{ padding: '10px', color: 'var(--text-muted)' }}>#{item.id}</td>
+                            <td style={{ padding: '10px', fontWeight: 600 }}>{item.name}</td>
+                            <td style={{ padding: '10px', color: 'var(--text-muted)' }}>{item.category_name || '—'}</td>
+                            <td style={{ padding: '10px', fontWeight: 700, color: 'var(--primary)' }}>₹{item.price}</td>
+                            <td style={{ padding: '10px' }}><span style={{ padding: '3px 10px', borderRadius: '999px', background: item.is_veg ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: item.is_veg ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 700 }}>{item.is_veg ? '🌿 Veg' : '🍗 Non-Veg'}</span></td>
+                            <td style={{ padding: '10px' }}><span style={{ padding: '3px 10px', borderRadius: '999px', background: item.is_available ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: item.is_available ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 700 }}>{item.is_available ? 'Yes' : 'No'}</span></td>
+                            <td style={{ padding: '10px' }}>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button className="btn btn-secondary" onClick={() => openFoodItemForm(item)} style={{ padding: '6px 10px', fontSize: '0.75rem' }}><Edit size={13} /></button>
+                                <button className="btn btn-danger" onClick={() => handleDeleteFoodItem(item.id)} style={{ padding: '6px 10px', fontSize: '0.75rem' }}><Trash2 size={13} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1603,114 +1641,127 @@ export const AdminDashboard = () => {
                     <RefreshCw size={14} /> Refresh
                   </button>
                 </div>
-                <div className="glass-card" style={{ overflowX: 'auto', border: '1px solid var(--card-border)', padding: '16px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        <th style={{ padding: '10px' }}>Order ID</th>
-                        <th style={{ padding: '10px' }}>Customer</th>
-                        <th style={{ padding: '10px' }}>Booking & Venue</th>
-                        <th style={{ padding: '10px' }}>Ordered Items (Qty)</th>
-                        <th style={{ padding: '10px' }}>Total Amount</th>
-                        <th style={{ padding: '10px' }}>Delivery</th>
-                        <th style={{ padding: '10px' }}>Payment</th>
-                        <th style={{ padding: '10px' }}>Order Status</th>
-                        <th style={{ padding: '10px' }}>Date & Time (IST)</th>
-                      </tr>
-                    </thead>
-                    <tbody style={{ fontSize: '0.875rem' }}>
-                      {foodOrders.map(order => {
-                        const items = Array.isArray(order.items) ? order.items : [];
-                        const totalQty = items.reduce((acc, it) => acc + (it.qty || 0), 0);
-                        
-                        const formatDateToISTString = (dateVal) => {
-                          if (!dateVal) return '—';
-                          const d = new Date(dateVal);
-                          if (isNaN(d.getTime())) return '—';
-                          const year = d.getFullYear();
-                          const month = String(d.getMonth() + 1).padStart(2, '0');
-                          const day = String(d.getDate()).padStart(2, '0');
-                          const hours = String(d.getHours()).padStart(2, '0');
-                          const minutes = String(d.getMinutes()).padStart(2, '0');
-                          return `${year}-${month}-${day} ${hours}:${minutes}`;
-                        };
-
-                        const orderDateStr = formatDateToISTString(order.created_at);
-
-                        return (
-                          <tr key={order.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', verticalAlign: 'top' }}>
-                            <td style={{ padding: '12px', fontWeight: 700 }}>#{String(order.id).padStart(4,'0')}</td>
-                            <td style={{ padding: '12px' }}>
-                              <div style={{ fontWeight: 600 }}>{order.user_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{order.user_email}</div>
-                            </td>
-                            <td style={{ padding: '12px' }}>
-                              <div style={{ fontWeight: 600 }}>{order.facility_name || 'Canteen'}</div>
-                              {order.booking_id && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
-                                  Booking: #{order.booking_id}
-                                </div>
-                              )}
-                              {order.facility_type && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-                                  Sport: {order.facility_type}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ padding: '12px' }}>
-                              {items.map((it, i) => (
-                                <div key={i} style={{ fontSize: '0.8rem' }}>
-                                  {it.name} × {it.qty}
-                                </div>
-                              ))}
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', borderTop: '1px dashed var(--border)', paddingTop: '2px' }}>
-                                Total Qty: {totalQty}
-                              </div>
-                            </td>
-                            <td style={{ padding: '12px', fontWeight: 700, color: 'var(--primary)' }}>₹{parseFloat(order.total_price).toFixed(0)}</td>
-                            <td style={{ padding: '12px', fontSize: '0.8rem' }}>{order.delivery_time === 'before' ? '⚡ Before Match' : order.delivery_time === 'during' ? '🎮 During Match' : '🏆 After Match'}</td>
-                            <td style={{ padding: '12px' }}>
-                              <div style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize', marginBottom: '4px' }}>
-                                {order.payment_method}
-                              </div>
-                              <span style={{ padding: '3px 8px', borderRadius: '999px', background: order.payment_status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: order.payment_status === 'paid' ? '#10b981' : '#f59e0b', fontSize: '0.75rem', fontWeight: 700 }}>
-                                {order.payment_status}
-                              </span>
-                            </td>
-                            <td style={{ padding: '12px' }}>
-                              <select
-                                value={order.order_status}
-                                onChange={e => handleUpdateOrderStatus(order.id, e.target.value)}
-                                style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${orderStatusColor(order.order_status)}`, background: 'var(--bg-surface)', color: orderStatusColor(order.order_status), fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}
-                              >
-                                {[
-                                  { value: 'pending', label: 'Order Placed' },
-                                  { value: 'preparing', label: 'Preparing' },
-                                  { value: 'ready', label: 'Ready' },
-                                  { value: 'delivered', label: 'Delivered' },
-                                  { value: 'cancelled', label: 'Cancelled' }
-                                ].map(s => (
-                                  <option key={s.value} value={s.value}>{s.label}</option>
-                                ))}
-                              </select>
-                            </td>
-                            <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                              {orderDateStr}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="admin-pagination">
-                  <span>Page {ordersPage} of {ordersTotalPages} &nbsp;·&nbsp; {foodOrders.length} results shown</span>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn btn-secondary" disabled={ordersPage <= 1} onClick={() => setOrdersPage(prev => Math.max(prev - 1, 1))} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>← Prev</button>
-                    <button className="btn btn-secondary" disabled={ordersPage >= ordersTotalPages} onClick={() => setOrdersPage(prev => Math.min(prev + 1, ordersTotalPages))} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>Next →</button>
+                {canteenLoading && foodOrders.length === 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+                    <div className="spinner" />
                   </div>
-                </div>
+                ) : foodOrders.length === 0 ? (
+                  <div className="glass-card admin-empty-state" style={{ padding: '50px 20px', textAlign: 'center' }}>
+                    <UtensilsCrossed size={40} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+                    <p style={{ color: 'var(--text-muted)' }}>No food orders match your current filters. Try adjusting the search, status, or date.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="glass-card" style={{ overflowX: 'auto', border: '1px solid var(--card-border)', padding: '16px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                            <th style={{ padding: '10px' }}>Order ID</th>
+                            <th style={{ padding: '10px' }}>Customer</th>
+                            <th style={{ padding: '10px' }}>Booking & Venue</th>
+                            <th style={{ padding: '10px' }}>Ordered Items (Qty)</th>
+                            <th style={{ padding: '10px' }}>Total Amount</th>
+                            <th style={{ padding: '10px' }}>Delivery</th>
+                            <th style={{ padding: '10px' }}>Payment</th>
+                            <th style={{ padding: '10px' }}>Order Status</th>
+                            <th style={{ padding: '10px' }}>Date & Time (IST)</th>
+                          </tr>
+                        </thead>
+                        <tbody style={{ fontSize: '0.875rem' }}>
+                          {foodOrders.map(order => {
+                            const items = Array.isArray(order.items) ? order.items : [];
+                            const totalQty = items.reduce((acc, it) => acc + (it.qty || 0), 0);
+                            
+                            const formatDateToISTString = (dateVal) => {
+                              if (!dateVal) return '—';
+                              const d = new Date(dateVal);
+                              if (isNaN(d.getTime())) return '—';
+                              const year = d.getFullYear();
+                              const month = String(d.getMonth() + 1).padStart(2, '0');
+                              const day = String(d.getDate()).padStart(2, '0');
+                              const hours = String(d.getHours()).padStart(2, '0');
+                              const minutes = String(d.getMinutes()).padStart(2, '0');
+                              return `${year}-${month}-${day} ${hours}:${minutes}`;
+                            };
+
+                            const orderDateStr = formatDateToISTString(order.created_at);
+
+                            return (
+                              <tr key={order.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', verticalAlign: 'top' }}>
+                                <td style={{ padding: '12px', fontWeight: 700 }}>#{String(order.id).padStart(4,'0')}</td>
+                                <td style={{ padding: '12px' }}>
+                                  <div style={{ fontWeight: 600 }}>{order.user_name}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{order.user_email}</div>
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                  <div style={{ fontWeight: 600 }}>{order.facility_name || 'Canteen'}</div>
+                                  {order.booking_id && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
+                                      Booking: #{order.booking_id}
+                                    </div>
+                                  )}
+                                  {order.facility_type && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                                      Sport: {order.facility_type}
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                  {items.map((it, i) => (
+                                    <div key={i} style={{ fontSize: '0.8rem' }}>
+                                      {it.name} × {it.qty}
+                                    </div>
+                                  ))}
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', borderTop: '1px dashed var(--border)', paddingTop: '2px' }}>
+                                    Total Qty: {totalQty}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '12px', fontWeight: 700, color: 'var(--primary)' }}>₹{parseFloat(order.total_price).toFixed(0)}</td>
+                                <td style={{ padding: '12px', fontSize: '0.8rem' }}>{order.delivery_time === 'before' ? '⚡ Before Match' : order.delivery_time === 'during' ? '🎮 During Match' : '🏆 After Match'}</td>
+                                <td style={{ padding: '12px' }}>
+                                  <div style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize', marginBottom: '4px' }}>
+                                    {order.payment_method}
+                                  </div>
+                                  <span style={{ padding: '3px 8px', borderRadius: '999px', background: order.payment_status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: order.payment_status === 'paid' ? '#10b981' : '#f59e0b', fontSize: '0.75rem', fontWeight: 700 }}>
+                                    {order.payment_status}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                  <select
+                                    value={order.order_status}
+                                    onChange={e => handleUpdateOrderStatus(order.id, e.target.value)}
+                                    style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${orderStatusColor(order.order_status)}`, background: 'var(--bg-surface)', color: orderStatusColor(order.order_status), fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}
+                                  >
+                                    {[
+                                      { value: 'pending', label: 'Order Placed' },
+                                      { value: 'preparing', label: 'Preparing' },
+                                      { value: 'ready', label: 'Ready' },
+                                      { value: 'delivered', label: 'Delivered' },
+                                      { value: 'cancelled', label: 'Cancelled' }
+                                    ].map(s => (
+                                      <option key={s.value} value={s.value}>{s.label}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                  {orderDateStr}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="admin-pagination">
+                      <span>Page {ordersPage} of {ordersTotalPages} &nbsp;·&nbsp; {foodOrders.length} results shown</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="btn btn-secondary" disabled={ordersPage <= 1} onClick={() => setOrdersPage(prev => Math.max(prev - 1, 1))} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>← Prev</button>
+                        <button className="btn btn-secondary" disabled={ordersPage >= ordersTotalPages} onClick={() => setOrdersPage(prev => Math.min(prev + 1, ordersTotalPages))} style={{ padding: '6px 14px', fontSize: '0.8rem' }}>Next →</button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

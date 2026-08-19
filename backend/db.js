@@ -24,30 +24,32 @@ export const initDb = async () => {
     console.log('Initializing PostgreSQL database schemas...');
 
     // 0. Ensure target database exists by connecting to default 'postgres' database first
-    const connectionString = process.env.DATABASE_URL;
-    const lastSlashIndex = connectionString.lastIndexOf('/');
-    const baseConnectionString = connectionString.substring(0, lastSlashIndex);
-    const dbName = connectionString.substring(lastSlashIndex + 1);
+    const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/sports_booking';
+    if (connectionString && connectionString.includes('/')) {
+      const lastSlashIndex = connectionString.lastIndexOf('/');
+      const baseConnectionString = connectionString.substring(0, lastSlashIndex);
+      const dbName = connectionString.substring(lastSlashIndex + 1);
 
-    const defaultClient = new pg.Client({
-      connectionString: `${baseConnectionString}/postgres`,
-    });
+      const defaultClient = new pg.Client({
+        connectionString: `${baseConnectionString}/postgres`,
+      });
 
-    try {
-      await defaultClient.connect();
-      const checkDb = await defaultClient.query("SELECT 1 FROM pg_database WHERE datname = $1", [dbName]);
-      
-      if (checkDb.rows.length === 0) {
-        console.log(`Database "${dbName}" does not exist. Creating it now...`);
-        await defaultClient.query(`CREATE DATABASE ${dbName}`);
-        console.log(`Database "${dbName}" created successfully.`);
-      }
-    } catch (dbErr) {
-      console.warn('Warning: Could not auto-create database (might already exist or permission restricted):', dbErr.message);
-    } finally {
       try {
-        await defaultClient.end();
-      } catch (e) {}
+        await defaultClient.connect();
+        const checkDb = await defaultClient.query("SELECT 1 FROM pg_database WHERE datname = $1", [dbName]);
+        
+        if (checkDb.rows.length === 0) {
+          console.log(`Database "${dbName}" does not exist. Creating it now...`);
+          await defaultClient.query(`CREATE DATABASE ${dbName}`);
+          console.log(`Database "${dbName}" created successfully.`);
+        }
+      } catch (dbErr) {
+        console.warn('Warning: Could not auto-create database (might already exist or permission restricted):', dbErr.message);
+      } finally {
+        try {
+          await defaultClient.end();
+        } catch (e) {}
+      }
     }
 
     // 0b. Canteen tables are preserved across restarts to keep admin-edited data (images, prices, etc.)
