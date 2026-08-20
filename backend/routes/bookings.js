@@ -194,8 +194,22 @@ router.get('/all', auth, admin, async (req, res) => {
     }
 
     if (status && status !== 'all') {
-      queryParams.push(status);
-      queryText += ` AND b.status = $${queryParams.length}`;
+      const todayStr = getISTDateStr();
+      const currentMin = getISTMinutes();
+      const currentH = String(Math.floor(currentMin / 60)).padStart(2, '0');
+      const currentM = String(currentMin % 60).padStart(2, '0');
+      const currentTimeStr = `${currentH}:${currentM}:00`;
+
+      if (status === 'done' || status === 'completed') {
+        queryParams.push(todayStr, currentTimeStr);
+        queryText += ` AND b.status = 'confirmed' AND (b.date < $${queryParams.length - 1} OR (b.date = $${queryParams.length - 1} AND b.end_time <= $${queryParams.length}))`;
+      } else if (status === 'active' || status === 'upcoming') {
+        queryParams.push(todayStr, currentTimeStr);
+        queryText += ` AND b.status = 'confirmed' AND (b.date > $${queryParams.length - 1} OR (b.date = $${queryParams.length - 1} AND b.end_time > $${queryParams.length}))`;
+      } else {
+        queryParams.push(status);
+        queryText += ` AND b.status = $${queryParams.length}`;
+      }
     }
 
     if (date) {

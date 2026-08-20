@@ -20,6 +20,31 @@ export const AdminDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // India Standard Time (Asia/Kolkata) helpers
+  const getISTNow = () => {
+    const now = new Date();
+    return new Date(now.getTime() + (now.getTimezoneOffset() * 60 * 1000) + 5.5 * 3600 * 1000);
+  };
+
+  const getISTTodayStr = () => {
+    const ist = getISTNow();
+    return `${ist.getFullYear()}-${String(ist.getMonth() + 1).padStart(2, '0')}-${String(ist.getDate()).padStart(2, '0')}`;
+  };
+
+  const getISTCurrentMinutes = () => {
+    const ist = getISTNow();
+    return ist.getHours() * 60 + ist.getMinutes();
+  };
+
+  const timeToMinutes = (tStr) => {
+    if (!tStr) return 0;
+    const parts = tStr.split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) || 0;
+    if (h === 24) return 1440;
+    return h * 60 + m;
+  };
+
   // Users Management States
   const [usersList, setUsersList] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -1326,7 +1351,9 @@ export const AdminDashboard = () => {
                           style={{ fontSize: '0.85rem', padding: '9px 12px', background: 'var(--bg-surface)' }}
                         >
                           <option value="all">All Statuses</option>
-                          <option value="confirmed">Confirmed</option>
+                          <option value="confirmed">All Confirmed</option>
+                          <option value="done">Done / Completed</option>
+                          <option value="active">Active / Upcoming</option>
                           <option value="cancelled">Cancelled</option>
                         </select>
                       </div>
@@ -1492,6 +1519,19 @@ export const AdminDashboard = () => {
                               const ist = new Date(d.getTime() + (d.getTimezoneOffset() * 60 * 1000) + 5.5 * 3600 * 1000);
                               return `${ist.getFullYear()}-${String(ist.getMonth() + 1).padStart(2, '0')}-${String(ist.getDate()).padStart(2, '0')}`;
                             })();
+
+                        const todayStr = getISTTodayStr();
+                        const currentMinutes = getISTCurrentMinutes();
+                        const bStartMin = timeToMinutes(b.start_time);
+                        const rawEndMin = timeToMinutes(b.end_time);
+                        const bEndMin = (rawEndMin === 0 && (b.end_time.startsWith('00') || b.end_time.startsWith('24'))) || rawEndMin === 1440 || rawEndMin === 1439 ? 1440 : rawEndMin;
+
+                        const isPastDate = bDateStr < todayStr;
+                        const isToday = bDateStr === todayStr;
+                        const isEndedToday = isToday && bEndMin <= currentMinutes;
+                        const isPlayingNow = isToday && bStartMin <= currentMinutes && currentMinutes < bEndMin;
+                        const isDone = b.status === 'confirmed' && (isPastDate || isEndedToday);
+
                         return (
                           <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                             <td style={{ padding: '11px 12px', fontWeight: 700, color: 'var(--text-muted)' }}>#{b.id}</td>
@@ -1507,11 +1547,29 @@ export const AdminDashboard = () => {
                             <td style={{ padding: '11px 12px', color: 'var(--primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{b.start_time.slice(0, 5)} – {b.end_time.slice(0, 5)}</td>
                             <td style={{ padding: '11px 12px', fontWeight: 700 }}>₹{parseFloat(b.total_price).toFixed(0)}</td>
                             <td style={{ padding: '11px 12px' }}>
-                              <span className={`badge ${b.status === 'confirmed' ? 'badge-success' : 'badge-danger'}`}>{b.status}</span>
+                              {b.status === 'cancelled' ? (
+                                <span className="badge badge-danger">cancelled</span>
+                              ) : isDone ? (
+                                <span className="badge badge-neutral" style={{ background: 'rgba(148, 163, 184, 0.15)', color: 'var(--text-muted)', border: '1px solid rgba(148, 163, 184, 0.25)', fontWeight: 700 }}>
+                                  Done
+                                </span>
+                              ) : isPlayingNow ? (
+                                <span className="badge badge-success" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981', fontWeight: 700 }}>
+                                  Active
+                                </span>
+                              ) : (
+                                <span className="badge badge-success">confirmed</span>
+                              )}
                             </td>
                             <td style={{ padding: '11px 12px' }}>
-                              {b.status === 'confirmed' && (
+                              {b.status === 'confirmed' && !isDone && (
                                 <button onClick={() => triggerCancelConfirm(b)} className="btn btn-danger" style={{ padding: '5px 10px', fontSize: '0.73rem' }}>Cancel</button>
+                              )}
+                              {isDone && (
+                                <span style={{ color: 'var(--text-dark)', fontSize: '0.8rem' }}>—</span>
+                              )}
+                              {b.status === 'cancelled' && (
+                                <span style={{ color: 'var(--text-dark)', fontSize: '0.8rem' }}>—</span>
                               )}
                             </td>
                           </tr>
