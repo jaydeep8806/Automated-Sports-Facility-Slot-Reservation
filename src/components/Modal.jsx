@@ -30,18 +30,19 @@ export const Modal = ({ isOpen, onClose, title, children }) => {
       backgroundColor: 'rgba(2, 6, 23, 0.85)',
       backdropFilter: 'blur(8px)',
       display: 'flex',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'center',
       zIndex: 9999,
-      padding: '75px 16px 20px',
-      overflowY: 'auto'
+      padding: '16px',
+      overflowY: 'auto',
+      overscrollBehavior: 'contain'
     }} onClick={onClose}>
       <div 
         className="glass-card animate-fade-in" 
         style={{
           width: '100%',
           maxWidth: '520px',
-          maxHeight: 'calc(100vh - 95px)',
+          maxHeight: 'min(90vh, 580px)',
           display: 'flex',
           flexDirection: 'column',
           padding: '20px',
@@ -50,7 +51,8 @@ export const Modal = ({ isOpen, onClose, title, children }) => {
           borderRadius: '16px',
           boxShadow: 'var(--shadow-xl, 0 20px 50px rgba(0,0,0,0.6))',
           position: 'relative',
-          margin: 'auto'
+          margin: 'auto',
+          overflow: 'hidden'
         }}
         onClick={(e) => e.stopPropagation()}
       >

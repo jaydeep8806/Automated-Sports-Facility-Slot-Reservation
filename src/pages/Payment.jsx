@@ -104,38 +104,54 @@ export const Payment = () => {
     }
   };
 
-  return (
-    <div className="container animate-fade-in" style={{ marginTop: '40px', paddingBottom: '80px' }}>
-
-      {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Wallet style={{ color: 'var(--primary)' }} /> {isExtension ? 'Extend Booking Checkout' : 'Secure Checkout'}
-        </h1>
-        <p style={{ color: 'var(--text-muted)', marginTop: '6px' }}>
-          {isExtension
-            ? 'Review your additional extension slots and complete payment.'
-            : 'Review your booking and complete the payment.'}
-        </p>
-      </div>
-
-      {/* SUCCESS VIEW */}
-      {success ? (
-        <div className="glass-card animate-scale-up" style={{ padding: '48px 40px', maxWidth: '640px', margin: '0 auto', textAlign: 'center', border: '1px solid rgba(16,185,129,0.2)' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(16,185,129,0.1)', border: '2px solid rgb(16,185,129)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' }}>
-            <ShieldCheck size={40} style={{ color: 'rgb(16,185,129)' }} />
+  /* SUCCESS VIEW — Dedicated centered layout fitting comfortably within viewport */
+  if (success) {
+    return (
+      <div className="container animate-fade-in" style={{
+        minHeight: 'calc(100vh - 90px)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px 16px 40px'
+      }}>
+        <div className="glass-card animate-scale-up" style={{
+          padding: '24px 26px',
+          maxWidth: '560px',
+          width: '100%',
+          margin: '0 auto',
+          textAlign: 'center',
+          border: '1px solid rgba(16,185,129,0.25)',
+          boxShadow: '0 16px 40px rgba(0,0,0,0.35)'
+        }}>
+          {/* Success Badge Icon */}
+          <div style={{
+            width: '52px',
+            height: '52px',
+            borderRadius: '50%',
+            background: 'rgba(16,185,129,0.12)',
+            border: '2px solid rgb(16,185,129)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 10px auto'
+          }}>
+            <ShieldCheck size={28} style={{ color: 'rgb(16,185,129)' }} />
           </div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '12px', color: 'rgb(16,185,129)' }}>
+
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '6px', color: 'rgb(16,185,129)' }}>
             {isExtension ? 'Booking Extended Successfully! 🎉' : 'Booking Confirmed! 🎉'}
           </h2>
-          <p style={{ color: 'var(--text-main)', fontSize: '1.05rem', fontWeight: 500, marginBottom: '6px' }}>
+
+          <p style={{ color: 'var(--text-main)', fontSize: '0.95rem', fontWeight: 500, marginBottom: '4px' }}>
             {isExtension
-              ? <>Your session at <strong>{facilityName}</strong> has been successfully extended to <strong>{selectedSlots[selectedSlots.length - 1]?.endTime}</strong>.</>
+              ? <>Your session at <strong>{facilityName}</strong> has been extended to <strong>{selectedSlots[selectedSlots.length - 1]?.endTime}</strong>.</>
               : <>Your slot at <strong>{facilityName}</strong> is reserved.</>
             }
           </p>
+
           {createdBookingIds.length > 0 && (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '12px' }}>
               Booking ID: {createdBookingIds.map(id => `#${id}`).join(', ')}
             </p>
           )}
@@ -144,17 +160,17 @@ export const Payment = () => {
             <div style={{
               background: 'rgba(99, 102, 241, 0.08)',
               border: '1px solid rgba(99, 102, 241, 0.25)',
-              borderRadius: '12px',
-              padding: '18px 20px',
-              marginBottom: '24px',
+              borderRadius: '10px',
+              padding: '12px 14px',
+              marginBottom: '12px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px',
-              fontSize: '0.88rem',
+              gap: '6px',
+              fontSize: '0.82rem',
               textAlign: 'left'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Facility & Sport:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Facility &amp; Sport:</span>
                 <strong style={{ color: 'var(--text-main)' }}>{facilityName} {facilityType ? `(${facilityType})` : ''}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -171,24 +187,24 @@ export const Payment = () => {
                 <span style={{ color: 'var(--text-muted)' }}>Newly Extended Slots:</span>
                 <strong style={{ color: '#10b981' }}>{selectedSlots.map(s => `${s.startTime}–${s.endTime}`).join(', ')}</strong>
               </div>
-              <div style={{ borderTop: '1px solid rgba(99, 102, 241, 0.2)', margin: '4px 0' }} />
+              <div style={{ borderTop: '1px solid rgba(99, 102, 241, 0.2)', margin: '2px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Updated Total Session:</span>
-                <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>
+                <strong style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>
                   {originalStartTime ? `${originalStartTime} – ${selectedSlots[selectedSlots.length - 1]?.endTime}` : `${selectedSlots[0]?.startTime} – ${selectedSlots[selectedSlots.length - 1]?.endTime}`}
                 </strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Extension Amount Paid:</span>
-                <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>₹{totalPrice.toFixed(2)}</strong>
+                <strong style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>₹{totalPrice.toFixed(2)}</strong>
               </div>
             </div>
           )}
 
-          {errorMsg && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '16px' }}>{errorMsg}</p>}
+          {errorMsg && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '12px' }}>{errorMsg}</p>}
 
-          {/* Feedback Trigger CTA in Success Card */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+          {/* Feedback Trigger CTA */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
             <button
               type="button"
               onClick={() => setShowFeedbackModal(true)}
@@ -197,47 +213,104 @@ export const Payment = () => {
                 background: 'rgba(245, 158, 11, 0.12)',
                 border: '1.5px solid #f59e0b',
                 color: '#f59e0b',
-                padding: '10px 22px',
-                borderRadius: '12px',
+                padding: '8px 18px',
+                borderRadius: '10px',
                 fontWeight: 700,
-                fontSize: '0.9rem',
+                fontSize: '0.84rem',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '6px',
                 cursor: 'pointer'
               }}
             >
-              <Star size={16} fill="#f59e0b" stroke="none" /> Share Booking Experience Feedback
+              <Star size={14} fill="#f59e0b" stroke="none" /> Share Booking Experience Feedback
             </button>
           </div>
 
-          {/* Canteen CTA */}
-          <div style={{ background: 'linear-gradient(135deg,rgba(245,158,11,0.1),rgba(239,68,68,0.08))', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🍔</div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '8px' }}>Hungry? Order Food from the Canteen!</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '18px' }}>Get snacks, fast food, and drinks delivered to your seat during the match.</p>
+          {/* Canteen CTA Card */}
+          <div style={{
+            background: 'linear-gradient(135deg,rgba(245,158,11,0.1),rgba(239,68,68,0.08))',
+            border: '1px solid rgba(245,158,11,0.3)',
+            borderRadius: '14px',
+            padding: '16px 18px',
+            marginBottom: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '1.3rem' }}>🍔</span>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Hungry? Order Food from Canteen!</h3>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '12px' }}>
+              Get snacks, fast food, and drinks delivered to your seat during the match.
+            </p>
             <button
               onClick={() => navigate(`/canteen?bookingId=${createdBookingIds[0] || ''}&facilityId=${facilityId}&facilityName=${encodeURIComponent(facilityName || '')}`)}
-              style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)', color: '#fff', border: 'none', padding: '13px 28px', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 16px rgba(245,158,11,0.3)', transition: 'transform 0.2s' }}
-              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+              style={{
+                background: 'linear-gradient(135deg,#f59e0b,#ef4444)',
+                color: '#fff',
+                border: 'none',
+                padding: '10px 22px',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(245,158,11,0.3)',
+                transition: 'transform 0.2s'
+              }}
+              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-1px)'}
               onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
             >
-              <UtensilsCrossed size={18} /> Order Food from Canteen
+              <UtensilsCrossed size={16} /> Order Food from Canteen
             </button>
           </div>
-          <button onClick={() => navigate('/profile')} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 700, textDecoration: 'underline' }}>
-            Go to My Bookings → Active Bookings
-          </button>
-        </div>
-      ) : (
-        /* CHECKOUT LAYOUT */
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '32px' }} className="checkout-layout">
 
-          {/* Left: Payment Trigger */}
-          <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '16px' }}>
-              {isExtension ? 'Complete Extension Payment' : 'Complete Your Payment'}
-            </h2>
+          {/* Direct Link to My Bookings */}
+          <div>
+            <button onClick={() => navigate('/profile')} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 700, textDecoration: 'underline' }}>
+              Go to My Bookings → Active Bookings
+            </button>
+          </div>
+        </div>
+
+        {/* Feedback Popup Modal */}
+        {showFeedbackModal && createdBookingIds.length > 0 && (
+          <FeedbackModal
+            bookingId={createdBookingIds[0]}
+            facilityId={facilityId}
+            facilityName={facilityName}
+            onClose={() => setShowFeedbackModal(false)}
+            onSuccess={() => setShowFeedbackModal(false)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="container animate-fade-in" style={{ marginTop: '32px', paddingBottom: '60px' }}>
+
+      {/* Header */}
+      <div style={{ marginBottom: '24px' }}>
+        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Wallet style={{ color: 'var(--primary)' }} /> {isExtension ? 'Extend Booking Checkout' : 'Secure Checkout'}
+        </h1>
+        <p style={{ color: 'var(--text-muted)', marginTop: '6px' }}>
+          {isExtension
+            ? 'Review your additional extension slots and complete payment.'
+            : 'Review your booking and complete the payment.'}
+        </p>
+      </div>
+
+      {/* CHECKOUT LAYOUT */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '28px' }} className="checkout-layout">
+
+        {/* Left: Payment Trigger */}
+        <div className="glass-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '14px' }}>
+            {isExtension ? 'Complete Extension Payment' : 'Complete Your Payment'}
+          </h2>
 
             {/* Supported methods */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '10px' }}>
@@ -381,7 +454,6 @@ export const Payment = () => {
           </div>
 
         </div>
-      )}
 
       {/* Razorpay-style Modal */}
       {showModal && (

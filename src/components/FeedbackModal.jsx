@@ -81,101 +81,117 @@ export const FeedbackModal = ({
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(10, 15, 29, 0.75)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999,
-      padding: '20px'
-    }}>
-      <div className="glass-card animate-scale-up" style={{
-        width: '100%',
-        maxWidth: '480px',
-        padding: '32px 28px',
-        position: 'relative',
-        border: '1.5px solid var(--primary)',
-        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.45)',
-        background: 'var(--bg-surface)'
-      }}>
-
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(2, 6, 23, 0.85)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '16px',
+        overflowY: 'auto',
+        overscrollBehavior: 'contain'
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="glass-card animate-scale-up"
+        style={{
+          width: '100%',
+          maxWidth: '460px',
+          maxHeight: 'min(92vh, 560px)',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          border: '1.5px solid var(--primary)',
+          borderRadius: '18px',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.55)',
+          background: 'var(--bg-surface)',
+          padding: '24px 22px',
+          overflowY: 'auto',
+          margin: 'auto'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close button */}
         {!submitted && (
           <button
             onClick={onClose}
             style={{
               position: 'absolute',
-              top: '16px',
-              right: '16px',
+              top: '14px',
+              right: '14px',
               background: 'rgba(255, 255, 255, 0.06)',
               border: 'none',
               borderRadius: '50%',
-              width: '32px',
-              height: '32px',
+              width: '30px',
+              height: '30px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'var(--text-muted)',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              transition: 'all 0.15s'
             }}
             aria-label="Close"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         )}
 
         {submitted ? (
           /* Success State */
-          <div style={{ textAlign: 'center', padding: '24px 0' }} className="animate-scale-up">
+          <div style={{ textAlign: 'center', padding: '20px 0' }} className="animate-scale-up">
             <div style={{
-              width: '64px',
-              height: '64px',
+              width: '56px',
+              height: '56px',
               borderRadius: '50%',
               background: 'rgba(16, 185, 129, 0.15)',
               border: '2px solid #10b981',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 16px auto',
+              margin: '0 auto 12px auto',
               color: '#10b981'
             }}>
-              <CheckCircle2 size={36} />
+              <CheckCircle2 size={30} />
             </div>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '6px', color: 'var(--text-main)' }}>
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '6px', color: 'var(--text-main)' }}>
               Thank You! 🎉
             </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
               Your review has been published and added to <strong>"What Players Say"</strong>.
             </p>
           </div>
         ) : (
           /* Feedback Form */
           <div>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
                 background: 'var(--primary-glow)',
                 border: '1px solid var(--primary)',
-                padding: '4px 12px',
+                padding: '3px 10px',
                 borderRadius: '999px',
-                fontSize: '0.78rem',
+                fontSize: '0.74rem',
                 fontWeight: 700,
                 color: 'var(--primary)',
-                marginBottom: '10px'
+                marginBottom: '8px'
               }}>
-                <MessageSquareHeart size={14} /> Booking Confirmed & Verified
+                <MessageSquareHeart size={13} /> Booking Confirmed &amp; Verified
               </div>
 
-              <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0 0 6px 0', color: 'var(--text-main)' }}>
+              <h2 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-main)' }}>
                 How was your booking experience?
               </h2>
 
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
                 Tell us about your experience with <strong>{facilityName}</strong>
               </p>
             </div>
@@ -185,14 +201,14 @@ export const FeedbackModal = ({
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '8px',
-              padding: '16px',
+              gap: '6px',
+              padding: '12px 14px',
               background: 'rgba(255, 255, 255, 0.03)',
               borderRadius: '12px',
               border: '1px solid var(--border)',
-              marginBottom: '20px'
+              marginBottom: '14px'
             }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
                 {[1, 2, 3, 4, 5].map((star) => {
                   const isFilled = star <= activeRating;
                   return (
@@ -206,14 +222,14 @@ export const FeedbackModal = ({
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
-                        padding: '4px',
-                        transform: (hoverRating === star || rating === star) ? 'scale(1.18)' : 'scale(1)',
+                        padding: '3px',
+                        transform: (hoverRating === star || rating === star) ? 'scale(1.15)' : 'scale(1)',
                         transition: 'transform 0.15s ease'
                       }}
                       aria-label={`${star} Stars`}
                     >
                       <Star
-                        size={32}
+                        size={28}
                         fill={isFilled ? '#f59e0b' : 'none'}
                         stroke={isFilled ? '#f59e0b' : 'var(--text-muted)'}
                         style={{
@@ -226,30 +242,30 @@ export const FeedbackModal = ({
                 })}
               </div>
 
-              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f59e0b', minHeight: '20px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f59e0b', minHeight: '18px' }}>
                 {RATING_LABELS[activeRating] || 'Select your rating'}
               </span>
             </div>
 
             {/* Comment Textarea */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
                 Feedback / Comments (Optional)
               </label>
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Tell us about your experience (e.g. ground condition, smooth booking, lighting, turf quality)..."
-                rows={3}
+                rows={2}
                 style={{
                   width: '100%',
                   background: 'var(--bg-main)',
                   border: '1px solid var(--border)',
                   borderRadius: '10px',
-                  padding: '12px 14px',
+                  padding: '10px 12px',
                   color: 'var(--text-main)',
-                  fontSize: '0.9rem',
-                  lineHeight: '1.5',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
                   resize: 'none',
                   outline: 'none'
                 }}
@@ -263,17 +279,17 @@ export const FeedbackModal = ({
                 background: 'rgba(239, 68, 68, 0.1)',
                 border: '1px solid var(--danger)',
                 color: 'var(--danger)',
-                padding: '10px 12px',
+                padding: '8px 10px',
                 borderRadius: '8px',
-                fontSize: '0.82rem',
-                marginBottom: '16px'
+                fontSize: '0.8rem',
+                marginBottom: '12px'
               }}>
                 {errorMessage}
               </div>
             )}
 
             {/* Action Buttons */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
                 type="button"
                 onClick={handleSubmit}
@@ -281,8 +297,8 @@ export const FeedbackModal = ({
                 className="btn btn-primary"
                 style={{
                   width: '100%',
-                  padding: '13px',
-                  fontSize: '0.95rem',
+                  padding: '11px',
+                  fontSize: '0.9rem',
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
@@ -294,7 +310,7 @@ export const FeedbackModal = ({
                   <>Submitting...</>
                 ) : (
                   <>
-                    <Send size={16} /> Submit Feedback
+                    <Send size={15} /> Submit Feedback
                   </>
                 )}
               </button>
@@ -307,9 +323,9 @@ export const FeedbackModal = ({
                   background: 'none',
                   border: 'none',
                   color: 'var(--text-muted)',
-                  fontSize: '0.85rem',
+                  fontSize: '0.8rem',
                   cursor: 'pointer',
-                  padding: '6px',
+                  padding: '4px',
                   textDecoration: 'underline'
                 }}
               >
