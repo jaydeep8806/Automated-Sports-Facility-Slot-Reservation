@@ -5,6 +5,25 @@ import { auth, admin } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Helper: Get current IST Date string "YYYY-MM-DD"
+const getISTDateStr = () => {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset);
+  const year = ist.getUTCFullYear();
+  const month = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(ist.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper: Get current IST minutes from midnight
+const getISTMinutes = () => {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset);
+  return ist.getUTCHours() * 60 + ist.getUTCMinutes();
+};
+
 // Helper: Format date to local YYYY-MM-DD
 const formatToYYYYMMDD = (d) => {
   if (!d) return '';
@@ -13,9 +32,10 @@ const formatToYYYYMMDD = (d) => {
   }
   const dateObj = new Date(d);
   if (isNaN(dateObj.getTime())) return '';
-  const year = dateObj.getUTCFullYear();
-  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getUTCDate()).padStart(2, '0');
+  const ist = new Date(dateObj.getTime() + 5.5 * 60 * 60 * 1000);
+  const year = ist.getUTCFullYear();
+  const month = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(ist.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
@@ -23,9 +43,7 @@ const formatToYYYYMMDD = (d) => {
 // @desc    Return current server time in IST (used by frontend for 2-hour booking rule)
 // @access  Public
 router.get('/time', (req, res) => {
-  // Server is configured with Asia/Kolkata timezone via pool.on('connect')
   const now = new Date();
-  // Convert to IST offset (+5:30)
   const istOffset = 5.5 * 60 * 60 * 1000;
   const ist = new Date(now.getTime() + istOffset);
   res.json({
@@ -128,15 +146,12 @@ router.get('/:id/slots', async (req, res) => {
     const { name: facName, open_time, close_time, slot_duration, price_per_hour } = facRes.rows[0];
 
     // Use IST server time for accurate 2-hour advance booking rule
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffset);
-    const todayStr = `${istNow.getUTCFullYear()}-${String(istNow.getUTCMonth() + 1).padStart(2, '0')}-${String(istNow.getUTCDate()).padStart(2, '0')}`;
+    const todayStr = getISTDateStr();
     const isToday = date === todayStr;
 
     let currentMinutes = 0;
     if (isToday) {
-      currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
+      currentMinutes = getISTMinutes();
     }
 
     // 2. Check if valid active-booking extension request

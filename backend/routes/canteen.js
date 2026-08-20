@@ -56,10 +56,13 @@ router.post('/orders', auth, async (req, res) => {
     return res.status(400).json({ message: 'Order must contain at least one item.' });
   }
 
+  const cleanBookingId = bookingId && !isNaN(parseInt(bookingId, 10)) ? parseInt(bookingId, 10) : null;
+  const cleanFacilityId = facilityId && !isNaN(parseInt(facilityId, 10)) ? parseInt(facilityId, 10) : null;
+
   try {
     // Verify booking belongs to user if provided
-    if (bookingId) {
-      const bookingRes = await query('SELECT * FROM bookings WHERE id = $1 AND user_id = $2', [bookingId, userId]);
+    if (cleanBookingId) {
+      const bookingRes = await query('SELECT * FROM bookings WHERE id = $1 AND user_id = $2', [cleanBookingId, userId]);
       if (bookingRes.rows.length === 0) {
         return res.status(403).json({ message: 'Booking not found or not owned by you.' });
       }
@@ -72,9 +75,9 @@ router.post('/orders', auth, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
        RETURNING *`,
       [
-        bookingId || null,
+        cleanBookingId,
         userId,
-        facilityId || null,
+        cleanFacilityId,
         JSON.stringify(items),
         parseFloat(totalPrice),
         deliveryTime || 'before',

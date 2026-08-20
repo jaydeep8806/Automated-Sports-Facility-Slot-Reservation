@@ -114,7 +114,8 @@ const printConsoleFallback = (to, subject, text) => {
  * Send OTP Verification Email
  */
 export const sendVerificationEmail = async (email, userName, otp) => {
-  const verifyLink = `http://localhost:5173/verify-email?email=${encodeURIComponent(email)}&otp=${otp}`;
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const verifyLink = `${clientUrl}/verify-email?email=${encodeURIComponent(email)}&otp=${otp}`;
   const subject = 'Verify your email - SportSlot';
   const text = `Hello ${userName},\n\nThank you for registering at SportSlot! Please use the following 6-digit OTP code to verify your account:\n\n👉 ${otp}\n\nAlternatively, you can verify your email directly by clicking the link below:\n${verifyLink}\n\nThis OTP will expire shortly. If you did not create this account, please ignore this email.\n\nBest regards,\nThe SportSlot Team`;
 

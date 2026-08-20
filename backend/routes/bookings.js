@@ -5,6 +5,25 @@ import { sendBookingConfirmationEmail } from '../utils/email.js';
 
 const router = express.Router();
 
+// Helper: Get current IST Date string "YYYY-MM-DD"
+const getISTDateStr = () => {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset);
+  const year = ist.getUTCFullYear();
+  const month = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(ist.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper: Get current IST minutes from midnight
+const getISTMinutes = () => {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset);
+  return ist.getUTCHours() * 60 + ist.getUTCMinutes();
+};
+
 // Helper: Convert time string "HH:MM:SS" or "HH:MM" to minutes from midnight
 const timeToMinutes = (timeStr) => {
   if (!timeStr) return 0;
@@ -23,9 +42,11 @@ const formatToYYYYMMDD = (d) => {
   }
   const dateObj = new Date(d);
   if (isNaN(dateObj.getTime())) return '';
-  const year = dateObj.getUTCFullYear();
-  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getUTCDate()).padStart(2, '0');
+  // Convert through IST offset to guarantee accurate date
+  const ist = new Date(dateObj.getTime() + 5.5 * 60 * 60 * 1000);
+  const year = ist.getUTCFullYear();
+  const month = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(ist.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
@@ -48,7 +69,7 @@ router.post('/', auth, async (req, res) => {
     }
 
     // 2. Prevent booking slots in the past
-    const todayStr = formatToYYYYMMDD(new Date());
+    const todayStr = getISTDateStr();
     if (date < todayStr) {
       return res.status(400).json({ message: 'Cannot book slots on a past date.' });
     }
@@ -58,8 +79,7 @@ router.post('/', auth, async (req, res) => {
       ? slots
       : [{ startTime, endTime, price: parseFloat(totalPrice) }];
 
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentMinutes = getISTMinutes();
 
     // Check all slots first for past time and double bookings
     for (const slot of slotsToBook) {
@@ -134,7 +154,7 @@ router.get('/my-bookings', auth, async (req, res) => {
     const result = await query(
       `SELECT b.*, f.name AS facility_name, f.location AS facility_location, f.type AS facility_type 
        FROM bookings b
-       JOIN facilities f ON b.facility_id = f.id
+       LEFT JOIN facilities f ON b.facility_id = f.id
        WHERE b.user_id = $1
        ORDER BY b.date DESC, b.start_time DESC`,
       [userId]
@@ -157,8 +177,8 @@ router.get('/all', auth, admin, async (req, res) => {
     let queryText = `
       SELECT b.*, f.name AS facility_name, f.location AS facility_location, u.name AS user_name, u.email AS user_email 
       FROM bookings b
-      JOIN facilities f ON b.facility_id = f.id
-      JOIN users u ON b.user_id = u.id
+      LEFT JOIN facilities f ON b.facility_id = f.id
+      LEFT JOIN users u ON b.user_id = u.id
       WHERE 1=1
     `;
     const queryParams = [];
@@ -264,16 +284,15 @@ router.put('/:id/cancel', auth, async (req, res) => {
 
     // 4. Time Check: Cannot cancel past bookings (Only restrict users, allow admins to override if needed)
     if (userRole !== 'admin') {
-      const todayStr = formatToYYYYMMDD(new Date());
-      const bookingDateStr = formatToYYYYMMDD(new Date(booking.date));
+      const todayStr = getISTDateStr();
+      const bookingDateStr = formatToYYYYMMDD(booking.date);
 
       if (bookingDateStr < todayStr) {
         return res.status(400).json({ message: 'Cannot cancel reservations for past dates.' });
       }
 
       if (bookingDateStr === todayStr) {
-        const now = new Date();
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const currentMinutes = getISTMinutes();
         const startMinutes = timeToMinutes(booking.start_time);
         
         if (startMinutes <= currentMinutes) {
@@ -359,10 +378,7 @@ router.get('/:id/check-extension', auth, async (req, res) => {
     }
 
     // Time Check (IST Server Time)
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffset);
-    const todayStr = `${istNow.getUTCFullYear()}-${String(istNow.getUTCMonth() + 1).padStart(2, '0')}-${String(istNow.getUTCDate()).padStart(2, '0')}`;
+    const todayStr = getISTDateStr();
     const bookingDateStr = formatToYYYYMMDD(booking.date);
     const dObj = new Date(booking.date);
     dObj.setDate(dObj.getDate() + 1);
@@ -372,7 +388,7 @@ router.get('/:id/check-extension', auth, async (req, res) => {
       return res.json({ canExtend: false, reason: 'Extensions are only available for active bookings today.' });
     }
 
-    const currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
+    const currentMinutes = getISTMinutes();
     const startMin = timeToMinutes(booking.start_time);
     const rawEndMin = timeToMinutes(booking.end_time);
     const endMin = (rawEndMin === 0 && (booking.end_time.startsWith('00') || booking.end_time.startsWith('24'))) || rawEndMin === 1440 || rawEndMin === 1439 ? 1440 : rawEndMin;
@@ -478,10 +494,7 @@ router.post('/:id/extend', auth, async (req, res) => {
       return res.status(400).json({ message: 'Booking is not active.' });
     }
 
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffset);
-    const todayStr = `${istNow.getUTCFullYear()}-${String(istNow.getUTCMonth() + 1).padStart(2, '0')}-${String(istNow.getUTCDate()).padStart(2, '0')}`;
+    const todayStr = getISTDateStr();
     const bookingDateStr = formatToYYYYMMDD(booking.date);
 
     if (bookingDateStr !== todayStr) {

@@ -2,6 +2,8 @@ import express from 'express';
 process.env.TZ = 'Asia/Kolkata';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { initDb } from './db.js';
 import authRouter from './routes/auth.js';
 import facilitiesRouter from './routes/facilities.js';
@@ -10,6 +12,10 @@ import canteenRouter from './routes/canteen.js';
 import usersRouter from './routes/users.js';
 import reviewsRouter from './routes/reviews.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
 const app = express();

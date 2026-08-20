@@ -1484,8 +1484,14 @@ export const AdminDashboard = () => {
                     </thead>
                     <tbody style={{ fontSize: '0.88rem' }}>
                       {bookings.map((b) => {
-                        const bDate = new Date(b.date);
-                        const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+                        const bDateStr = typeof b.date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(b.date)
+                          ? b.date.slice(0, 10)
+                          : (() => {
+                              const d = new Date(b.date);
+                              if (isNaN(d.getTime())) return '—';
+                              const ist = new Date(d.getTime() + (d.getTimezoneOffset() * 60 * 1000) + 5.5 * 3600 * 1000);
+                              return `${ist.getFullYear()}-${String(ist.getMonth() + 1).padStart(2, '0')}-${String(ist.getDate()).padStart(2, '0')}`;
+                            })();
                         return (
                           <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                             <td style={{ padding: '11px 12px', fontWeight: 700, color: 'var(--text-muted)' }}>#{b.id}</td>

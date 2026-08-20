@@ -13,10 +13,20 @@ export const Profile = () => {
   const navigate = useNavigate();
 
   // India Standard Time (Asia/Kolkata) helpers at component scope
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const getISTNow = () => {
+    const now = new Date();
+    return new Date(now.getTime() + (now.getTimezoneOffset() * 60 * 1000) + 5.5 * 3600 * 1000);
+  };
+
+  const getISTTodayStr = () => {
+    const ist = getISTNow();
+    return `${ist.getFullYear()}-${String(ist.getMonth() + 1).padStart(2, '0')}-${String(ist.getDate()).padStart(2, '0')}`;
+  };
+
+  const getISTCurrentMinutes = () => {
+    const ist = getISTNow();
+    return ist.getHours() * 60 + ist.getMinutes();
+  };
 
   const timeToMinutes = (tStr) => {
     if (!tStr) return 0;
@@ -27,14 +37,17 @@ export const Profile = () => {
 
   const formatDateToLocalYYYYMMDD = (dateVal) => {
     if (!dateVal) return '';
-    if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
-      return dateVal.slice(0, 10);
+    if (typeof dateVal === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
+        return dateVal.slice(0, 10);
+      }
     }
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return '';
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const ist = new Date(d.getTime() + (d.getTimezoneOffset() * 60 * 1000) + 5.5 * 3600 * 1000);
+    const year = ist.getFullYear();
+    const month = String(ist.getMonth() + 1).padStart(2, '0');
+    const day = String(ist.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
@@ -99,6 +112,8 @@ export const Profile = () => {
 
   // Helper to check extension status for currently active playing bookings
   const checkExtensionsForActiveBookings = async (bookingsList) => {
+    const todayStr = getISTTodayStr();
+    const currentMinutes = getISTCurrentMinutes();
     const activePlayingBookings = bookingsList.filter(b => {
       const bDateStr = formatDateToLocalYYYYMMDD(b.date);
       const startMin = timeToMinutes(b.start_time);
@@ -456,6 +471,9 @@ export const Profile = () => {
 
   // 5. Utility: Sort bookings into Active vs Past/Cancelled
   const filterBookings = () => {
+    const todayStr = getISTTodayStr();
+    const currentMinutes = getISTCurrentMinutes();
+
     return bookings.reduce((acc, b) => {
       const bDateStr = formatDateToLocalYYYYMMDD(b.date);
       
@@ -688,6 +706,8 @@ export const Profile = () => {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {displayedBookings.map((b) => {
+                    const todayStr = getISTTodayStr();
+                    const currentMinutes = getISTCurrentMinutes();
                     const bStartMin = timeToMinutes(b.start_time);
                     const rawEndMin = timeToMinutes(b.end_time);
                     const bEndMin = (rawEndMin === 0 && (b.end_time.startsWith('00') || b.end_time.startsWith('24'))) || rawEndMin === 1440 ? 1440 : rawEndMin;

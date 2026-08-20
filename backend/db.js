@@ -1,10 +1,21 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
 const { Pool } = pg;
+
+// Configure pg type parsers to prevent UTC timezone conversion corruption on DATE and TIME types
+pg.types.setTypeParser(1082, (val) => val); // DATE -> 'YYYY-MM-DD'
+pg.types.setTypeParser(1083, (val) => val); // TIME -> 'HH:MM:SS'
+pg.types.setTypeParser(1114, (val) => val); // TIMESTAMP -> string
+pg.types.setTypeParser(1184, (val) => val); // TIMESTAMPTZ -> string
 
 const isProduction = process.env.NODE_ENV === 'production' || (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('onrender.com'));
 
