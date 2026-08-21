@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, ShieldCheck, Zap, CalendarDays, Undo2,
-  MapPin, Star, Users, Trophy, Clock, ChevronDown, ChevronLeft, ChevronRight,
+  MapPin, Star, Users, Trophy, Clock, ChevronDown,
   Twitter, Instagram, Linkedin, Github, Mail, Phone, CheckCircle2
 } from 'lucide-react';
 
@@ -15,9 +15,51 @@ const FAQS = [
 ];
 
 const TESTIMONIALS = [
-  { name: 'Arjun Patel', role: 'Cricket Player, Ahmedabad', text: 'SportSlot made booking our weekly cricket practice so seamless. No more calling grounds early morning — just open the app and book in 30 seconds!', initials: 'AP', color: '#22c55e' },
-  { name: 'Priya Sharma', role: 'Tennis Coach, Surat', text: 'My students and I use SportSlot every week to reserve courts. The real-time slot availability is incredibly accurate. Zero double-booking issues ever.', initials: 'PS', color: '#3b82f6' },
-  { name: 'Rohan Mehta', role: 'Pickleball Enthusiast, Vadodara', text: 'Finally a platform that takes sports booking seriously! Clean UI, instant confirmation emails, and reliable slot management. Highly recommended.', initials: 'RM', color: '#8b5cf6' },
+  {
+    id: 't-1',
+    user_name: 'Arjun Patel',
+    sport: 'Cricket',
+    facility_name: 'Ahmedabad Cricket Arena',
+    comment: 'SportSlot made booking our weekly cricket practice so seamless. No more calling grounds early morning — just open the app and book in 30 seconds!',
+    rating: 5,
+    created_at: new Date(Date.now() - 86400000 * 2).toISOString()
+  },
+  {
+    id: 't-2',
+    user_name: 'Priya Sharma',
+    sport: 'Tennis',
+    facility_name: 'Surat Tennis Club',
+    comment: 'My students and I use SportSlot every week to reserve courts. The real-time slot availability is incredibly accurate. Zero double-booking issues ever.',
+    rating: 5,
+    created_at: new Date(Date.now() - 86400000 * 4).toISOString()
+  },
+  {
+    id: 't-3',
+    user_name: 'Rohan Mehta',
+    sport: 'Pickleball',
+    facility_name: 'Vadodara Arena',
+    comment: 'Finally a platform that takes sports booking seriously! Clean UI, instant confirmation emails, and reliable slot management. Highly recommended.',
+    rating: 5,
+    created_at: new Date(Date.now() - 86400000 * 5).toISOString()
+  },
+  {
+    id: 't-4',
+    user_name: 'Karan Desai',
+    sport: 'Cricket',
+    facility_name: 'SG Highway Box Turf',
+    comment: 'Instant confirmation and spotless turf maintenance. The online payment and slot locking are rock solid!',
+    rating: 5,
+    created_at: new Date(Date.now() - 86400000 * 6).toISOString()
+  },
+  {
+    id: 't-5',
+    user_name: 'Ananya Joshi',
+    sport: 'Tennis',
+    facility_name: 'Ahmedabad Clay Courts',
+    comment: 'Super fast instant reservation! The court surface was clean and floodlights were brilliant for evening games.',
+    rating: 5,
+    created_at: new Date(Date.now() - 86400000 * 7).toISOString()
+  }
 ];
 
 const STATS = [
@@ -45,32 +87,8 @@ const FaqItem = ({ q, a, index = 0 }) => {
 export const Home = () => {
   const [liveReviews, setLiveReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
-  const reviewsTrackRef = useRef(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-  const checkScrollability = () => {
-    if (!reviewsTrackRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = reviewsTrackRef.current;
-    setCanScrollLeft(scrollLeft > 6);
-    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
-  };
-
-  const handleScrollReviews = (direction) => {
-    if (!reviewsTrackRef.current) return;
-    const container = reviewsTrackRef.current;
-    const card = container.querySelector('.review-carousel-card');
-    const cardWidth = card ? card.offsetWidth : 280;
-    const scrollAmount = cardWidth + 20;
-
-    container.scrollBy({
-      left: direction === 'left' ? -scrollAmount : scrollAmount,
-      behavior: 'smooth'
-    });
-    setTimeout(checkScrollability, 350);
-  };
 
   useEffect(() => {
     const fetchRecentReviews = async () => {
@@ -78,7 +96,7 @@ export const Home = () => {
         const res = await fetch(API_BASE_URL + '/api/reviews/recent');
         if (res.ok) {
           const data = await res.json();
-          setLiveReviews(data);
+          setLiveReviews(Array.isArray(data) && data.length > 0 ? data : []);
         }
       } catch (err) {
         console.error('Fetch recent reviews error:', err);
@@ -89,7 +107,7 @@ export const Home = () => {
 
     fetchRecentReviews();
 
-    // Live update when new feedback is submitted
+    // Live update when new feedback is submitted dynamically
     const handleNewFeedback = (e) => {
       if (e.detail) {
         setLiveReviews(prev => {
@@ -105,22 +123,6 @@ export const Home = () => {
     window.addEventListener('new-feedback-submitted', handleNewFeedback);
     return () => window.removeEventListener('new-feedback-submitted', handleNewFeedback);
   }, []);
-
-  useEffect(() => {
-    checkScrollability();
-    const track = reviewsTrackRef.current;
-    if (track) {
-      track.addEventListener('scroll', checkScrollability, { passive: true });
-      window.addEventListener('resize', checkScrollability);
-    }
-    // Also re-check after brief render delay
-    const timer = setTimeout(checkScrollability, 500);
-    return () => {
-      clearTimeout(timer);
-      if (track) track.removeEventListener('scroll', checkScrollability);
-      window.removeEventListener('resize', checkScrollability);
-    };
-  }, [liveReviews]);
 
   // Scroll Reveal IntersectionObserver
   useEffect(() => {
@@ -249,7 +251,7 @@ export const Home = () => {
           </div>
         </section>
 
-        {/* ── TESTIMONIALS & LIVE USER REVIEWS ── */}
+        {/* ── TESTIMONIALS & LIVE USER REVIEWS (CONTINUOUS RIGHT-TO-LEFT MARQUEE) ── */}
         <section style={{ marginBottom: '80px', position: 'relative' }}>
           <div className="reveal-fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
             <div className="section-header" style={{ marginBottom: 0, textAlign: 'left' }}>
@@ -257,144 +259,115 @@ export const Home = () => {
               <h2 className="section-title" style={{ margin: '4px 0 6px' }}>What Players Say</h2>
               <p className="section-subtitle" style={{ margin: 0 }}>Real feedback from athletes after completing their ground reservations.</p>
             </div>
-
-            {/* Header Left/Right Scroll Controls */}
-            {Array.isArray(liveReviews) && liveReviews.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => handleScrollReviews('left')}
-                  disabled={!canScrollLeft}
-                  className="review-header-nav-btn"
-                  aria-label="Previous Review"
-                  title="Scroll Left"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleScrollReviews('right')}
-                  disabled={!canScrollRight}
-                  className="review-header-nav-btn"
-                  aria-label="Next Review"
-                  title="Scroll Right"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            )}
           </div>
 
-          <div className="reviews-carousel-container reveal-on-scroll">
-            {/* Left Floating Arrow Button */}
-            {Array.isArray(liveReviews) && liveReviews.length > 4 && (
-              <button
-                type="button"
-                onClick={() => handleScrollReviews('left')}
-                disabled={!canScrollLeft}
-                className="review-carousel-nav-btn prev"
-                aria-label="Scroll Left"
-                title="Scroll Left"
-              >
-                <ChevronLeft size={20} />
-              </button>
-            )}
+          {(() => {
+            const rawList = (Array.isArray(liveReviews) && liveReviews.length > 0) ? liveReviews : (reviewsLoading ? [] : TESTIMONIALS);
+            
+            // Ensure minimum cards count for seamless edge-to-edge looping on ultra-wide screens
+            let loopItems = rawList;
+            if (loopItems.length > 0) {
+              while (loopItems.length < 6) {
+                loopItems = [...loopItems, ...rawList];
+              }
+            }
 
-            {/* 1-Row Carousel Track */}
-            <div
-              ref={reviewsTrackRef}
-              className="reviews-carousel-track"
-              onScroll={checkScrollability}
-            >
-              {reviewsLoading ? (
-                <div style={{ width: '100%', textAlign: 'center', padding: '36px 0' }}>
-                  <div className="spinner" style={{ margin: '0 auto' }} />
-                </div>
-              ) : Array.isArray(liveReviews) && liveReviews.length > 0 ? (
-                liveReviews.map((r, idx) => {
-                  if (!r) return null;
-                  const userName = r.user_name || 'Verified Athlete';
-                  const initials = userName ? userName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'VA';
-                  const dateObj = r.created_at ? new Date(r.created_at) : new Date();
-                  const formattedDate = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                  const ratingNum = parseInt(r.rating, 10) || 5;
-                  const sportName = r.sport || r.facility_type || 'Sports';
-                  const formattedSport = sportName.charAt(0).toUpperCase() + sportName.slice(1).toLowerCase();
+            // Calculate comfortable, consistent velocity (~6.5 seconds per card)
+            const marqueeDuration = Math.max(28, loopItems.length * 6.5);
 
-                  return (
-                    <div
-                      key={r.id || idx}
-                      className={`glass-card testimonial-card review-carousel-card reveal-fade-up stagger-${(idx % 4) + 1}`}
-                      style={{
-                        padding: '24px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        border: '1px solid var(--card-border)',
-                        background: 'var(--bg-surface)'
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                          <div style={{ display: 'flex', gap: '3px' }}>
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                size={15}
-                                fill={i < ratingNum ? "#f59e0b" : "none"}
-                                stroke={i < ratingNum ? "none" : "var(--text-muted)"}
-                                style={{ filter: i < ratingNum ? 'drop-shadow(0 0 4px rgba(245,158,11,0.4))' : 'none' }}
-                              />
-                            ))}
-                          </div>
-                          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>{formattedDate}</span>
-                        </div>
+            const renderCard = (r, idx, keyPrefix) => {
+              if (!r) return null;
+              const userName = r.user_name || r.name || 'Verified Athlete';
+              const initials = userName ? userName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'VA';
+              const dateObj = r.created_at ? new Date(r.created_at) : new Date();
+              const formattedDate = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+              const ratingNum = parseInt(r.rating, 10) || 5;
+              const sportName = r.sport || r.facility_type || 'Sports';
+              const formattedSport = sportName.charAt(0).toUpperCase() + sportName.slice(1).toLowerCase();
 
-                        <p style={{ color: 'var(--text-main)', opacity: 0.9, fontSize: '0.92rem', lineHeight: '1.7', margin: '0 0 16px 0', fontStyle: 'italic' }}>
-                          "{r.comment || 'Great experience and seamless booking process.'}"
-                        </p>
+              return (
+                <div
+                  key={`${keyPrefix}-${r.id || idx}-${idx}`}
+                  className="glass-card testimonial-card review-marquee-card"
+                  style={{
+                    padding: '24px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    border: '1px solid var(--card-border)',
+                    background: 'var(--bg-surface)'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', gap: '3px' }}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            size={15}
+                            fill={i < ratingNum ? "#f59e0b" : "none"}
+                            stroke={i < ratingNum ? "none" : "var(--text-muted)"}
+                            style={{ filter: i < ratingNum ? 'drop-shadow(0 0 4px rgba(245,158,11,0.4))' : 'none' }}
+                          />
+                        ))}
                       </div>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>{formattedDate}</span>
+                    </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: 'auto', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
-                        <div className="testimonial-avatar" style={{ background: 'linear-gradient(135deg, var(--primary), #8b5cf6)', color: '#fff', fontWeight: 700, flexShrink: 0 }}>
-                          {initials}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden', minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            — {userName}
-                          </div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600 }}>
-                            Sports: {formattedSport}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            Facility: {r.facility_name || 'Sports Venue'}
-                          </div>
-                        </div>
+                    <p style={{ color: 'var(--text-main)', opacity: 0.9, fontSize: '0.92rem', lineHeight: '1.7', margin: '0 0 16px 0', fontStyle: 'italic' }}>
+                      "{r.comment || r.text || 'Great experience and seamless booking process.'}"
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: 'auto', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+                    <div className="testimonial-avatar" style={{ background: 'linear-gradient(135deg, var(--primary), #8b5cf6)', color: '#fff', fontWeight: 700, flexShrink: 0 }}>
+                      {initials}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden', minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        — {userName}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600 }}>
+                        Sports: {formattedSport}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Facility: {r.facility_name || 'Sports Venue'}
                       </div>
                     </div>
-                  );
-                })
-              ) : (
-                <div style={{ width: '100%', textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>
-                  No player reviews yet. Complete a booking to leave the first review!
+                  </div>
                 </div>
-              )}
-            </div>
+              );
+            };
 
-            {/* Right Floating Arrow Button */}
-            {Array.isArray(liveReviews) && liveReviews.length > 4 && (
-              <button
-                type="button"
-                onClick={() => handleScrollReviews('right')}
-                disabled={!canScrollRight}
-                className="review-carousel-nav-btn next"
-                aria-label="Scroll Right"
-                title="Scroll Right"
+            return (
+              <div
+                className="reviews-marquee-wrapper reveal-on-scroll"
+                style={{ '--marquee-duration': `${marqueeDuration}s` }}
               >
-                <ChevronRight size={20} />
-              </button>
-            )}
-          </div>
+                {reviewsLoading && loopItems.length === 0 ? (
+                  <div style={{ width: '100%', textAlign: 'center', padding: '36px 0' }}>
+                    <div className="spinner" style={{ margin: '0 auto' }} />
+                  </div>
+                ) : loopItems.length > 0 ? (
+                  <div className="reviews-marquee-track">
+                    {/* Primary Moving Group */}
+                    <div className="reviews-marquee-group" style={{ animationDuration: `${marqueeDuration}s` }}>
+                      {loopItems.map((r, idx) => renderCard(r, idx, 'grp1'))}
+                    </div>
+
+                    {/* Secondary Duplicate Group for 100% Seamless Right-to-Left Loop */}
+                    <div className="reviews-marquee-group" aria-hidden="true" style={{ animationDuration: `${marqueeDuration}s` }}>
+                      {loopItems.map((r, idx) => renderCard(r, idx, 'grp2'))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ width: '100%', textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>
+                    No player reviews yet. Complete a booking to leave the first review!
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </section>
 
         {/* ── FAQ ── */}
